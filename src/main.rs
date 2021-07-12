@@ -5,35 +5,27 @@
 mod logging;
 mod error_handlers;
 mod vt100;
+mod blinker;
+mod config;
+mod units;
 
+use stm32f0xx_hal as hal;
 use stm32f0xx_hal::stm32 as pac;
 use rtic::app;
-
-use stm32f0xx_hal::prelude::_embedded_hal_gpio_ToggleableOutputPin;
-use rtic::Mutex;
-use rtic::time::duration::{Milliseconds};
-fn blinker(mut cx: app::blinker::Context) {
-    log_info!("blinker");
-    cx.shared.led.lock(|led| led.toggle().ok());
-    let r = app::blinker::spawn_after(Milliseconds(100_u32));
-    log_debug!("spawn:{:?}", r.is_ok());
-
-}
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC])]
 mod app {
     use tim_systick_monotonic::TimSystickMonotonic;
     use stm32f0xx_hal::prelude::*;
-    use stm32f0xx_hal::gpio::gpioa::PA6;
-    use stm32f0xx_hal::gpio::{Output, PushPull};
-    use crate::blinker;
+    use crate::blinker::{blinker_task, BlinkerEvent, BlinkerState};
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
     use crate::log_info;
+    use crate::blinker::Blinker;
 
     #[shared]
     struct Shared {
-        led: PA6<Output<PushPull>>,
+        blinker: Blinker,
     }
 
     #[local]
@@ -58,15 +50,17 @@ mod app {
             _smth
         ) = cortex_m::interrupt::free(|cs| {
             (
-                gpioa.pa6.into_push_pull_output(cs),
+                gpioa.pa6,
                 gpioa.pa7
             )
         });
-        blinker::spawn().unwrap();
+        let mut blinker = Blinker::new(dp.TIM16, led, &rcc);
+        blinker.set_global_brigthness_percent(15);
+        blinker_task::spawn(BlinkerEvent::SetState(BlinkerState::Breath)).ok();
 
         (
             Shared{
-                led
+                blinker,
             },
             Local{},
             init::Monotonics(mono)
@@ -82,7 +76,7 @@ mod app {
     }
 
     extern "Rust" {
-        #[task(shared = [led])]
-        fn blinker(cx: blinker::Context);
+        #[task(shared = [blinker])]
+        fn blinker_task(cx: blinker_task::Context, e: crate::blinker::BlinkerEvent);
     }
 }
