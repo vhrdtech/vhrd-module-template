@@ -1,20 +1,23 @@
 #![no_std]
 #![no_main]
 
+#[macro_use]
+mod logging;
 mod error_handlers;
+mod vt100;
 
 use stm32f0xx_hal::stm32 as pac;
 use rtic::app;
 
 use stm32f0xx_hal::prelude::_embedded_hal_gpio_ToggleableOutputPin;
 use rtic::Mutex;
-use rtic::time::duration::{Seconds, Milliseconds};
-use rtt_target::rprintln;
+use rtic::time::duration::{Milliseconds};
 fn blinker(mut cx: app::blinker::Context) {
-    rprintln!("blinker");
+    log_info!("blinker");
     cx.shared.led.lock(|led| led.toggle().ok());
     let r = app::blinker::spawn_after(Milliseconds(100_u32));
-    rprintln!("spawn:{:?}", r.is_ok());
+    log_debug!("spawn:{:?}", r.is_ok());
+
 }
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC])]
@@ -24,7 +27,9 @@ mod app {
     use stm32f0xx_hal::gpio::gpioa::PA6;
     use stm32f0xx_hal::gpio::{Output, PushPull};
     use crate::blinker;
-    use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
+    // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
+    use super::logging;
+    use crate::log_info;
 
     #[shared]
     struct Shared {
@@ -39,8 +44,8 @@ mod app {
 
     #[init]
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
-        rtt_init_print!();
-        rprintln!("Hey");
+        logging::init();
+        log_info!("abc {}", 1);
 
         let cp = cx.core;
         let mut dp: super::pac::Peripherals = cx.device;
@@ -49,10 +54,12 @@ mod app {
 
         let gpioa = dp.GPIOA.split(&mut rcc);
         let (
-            mut led
+            led,
+            _smth
         ) = cortex_m::interrupt::free(|cs| {
             (
-                gpioa.pa6.into_push_pull_output(cs)
+                gpioa.pa6.into_push_pull_output(cs),
+                gpioa.pa7
             )
         });
         blinker::spawn().unwrap();
@@ -67,9 +74,9 @@ mod app {
     }
 
     #[idle]
-    fn idle(cx: idle::Context) -> ! {
+    fn idle(_cx: idle::Context) -> ! {
         loop {
-            rprintln!("idle");
+            // rprintln!("idle");
             cortex_m::asm::delay(500_000);
         }
     }
