@@ -547,6 +547,7 @@ dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",
  "cortex-m-rtic",
+ "embedded-hal",
  "embedded-time",
  "mcp25625",
  "rtt-target",

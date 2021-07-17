@@ -38,7 +38,6 @@ macro_rules! _log_internal {
         rtt_target::rprintln!();
     };
     ($level: ident, $fmt:expr) => {
-        #[cfg(feature = "log-text-rtt")]
         #[cfg(feature = "log-text-rtt")] {
             rtt_target::rprint!("{}", crate::_level_to_color!($level));
             rtt_target::rprintln!($fmt);

@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Check" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="check --features=&quot;f051c8u, can-mcp25625, log-text-rtt&quot;" />
+    <option name="command" value="check --features=&quot;f051c8u, can-mcp25625, log-text-rtt, log-level-debug&quot;" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

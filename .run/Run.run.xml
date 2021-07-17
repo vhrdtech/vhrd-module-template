@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
-    <option name="command" value="run --release --features=&quot;f051c8u, log-text-rtt&quot;" />
+    <option name="command" value="run --release --features=&quot;f051c8u, log-text-rtt, log-level-debug&quot;" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

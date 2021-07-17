@@ -6,8 +6,11 @@ rustflags = [
     # See https://github.com/rust-embedded/cortex-m-quickstart/pull/95
     "-C", "link-arg=--nmagic",
 
+#    "-C", "linker=flip-link",
     # LLD (shipped with the Rust toolchain) is used as the default linker
     "-C", "link-arg=-Tlink.x",
+
+    "-C", "link-arg=-Tcounters.x",
 
     # if you run into problems with LLD switch to the GNU linker by commenting out
     # this line
