@@ -53,53 +53,53 @@ macro_rules! _log_internal {
     };
 }
 
-#[cfg(any(feature = "log-level-trace", feature = "log-level-debug", feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error"))]
+#[cfg(feature = "log-level-trace")]
 #[macro_export]
 macro_rules! log_trace {
     ($($arg:tt)*) => {
         crate::_log_internal!(trace, $($arg)*);
     };
 }
-#[cfg(not(any(feature = "log-level-trace", feature = "log-level-debug", feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error")))]
+#[cfg(not(feature = "log-level-trace"))]
 #[macro_export]
 macro_rules! log_trace {
     ($($arg:tt)*) => {}
 }
 
-#[cfg(any(feature = "log-level-debug", feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error"))]
+#[cfg(feature = "log-level-debug")]
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {
         crate::_log_internal!(debug, $($arg)*);
     };
 }
-#[cfg(not(any(feature = "log-level-debug", feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error")))]
+#[cfg(not(feature = "log-level-debug"))]
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {}
 }
 
-#[cfg(any(feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error"))]
+#[cfg(feature = "log-level-info")]
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {
         crate::_log_internal!(info, $($arg)*);
     };
 }
-#[cfg(not(any(feature = "log-level-info", feature = "log-level-warn", feature = "log-level-error")))]
+#[cfg(not(feature = "log-level-info"))]
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {}
 }
 
-#[cfg(any(feature = "log-level-warn", feature = "log-level-error"))]
+#[cfg(feature = "log-level-warn")]
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)*) => {
         crate::_log_internal!(warn, $($arg)*);
     };
 }
-#[cfg(not(any(feature = "log-level-warn", feature = "log-level-error")))]
+#[cfg(not(feature = "log-level-warn"))]
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)*) => {}

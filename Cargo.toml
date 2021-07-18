@@ -31,10 +31,10 @@ log-defmt-rtt = [] # Log in defmt binary format over RTT
 log-defmt-can = [] # Log in defmt binary format over CAN
 # Select logging level
 log-level-default = []
-log-level-trace = []
-log-level-debug = []
-log-level-info = []
-log-level-warn = []
+log-level-trace = ["log-level-debug"]
+log-level-debug = ["log-level-info"]
+log-level-info = ["log-level-warn"]
+log-level-warn = ["log-level-error"]
 log-level-error = []
 
 [profile.release]

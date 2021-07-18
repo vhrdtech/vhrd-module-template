@@ -48,7 +48,11 @@ mod app {
     #[init]
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
         logging::init();
-        log_info!("abc {}", 1);
+        log_info!("info");
+        log_debug!("debug");
+        log_error!("error");
+        log_warn!("warn");
+        log_trace!("trace");
 
         let cp = cx.core;
         let mut dp: super::pac::Peripherals = cx.device;
@@ -131,7 +135,7 @@ mod app {
             //     let ctrs = &mut COUNTERS;
             //     ctrs[index] += 1;
             // }
-            log_info!("idle");
+            // log_info!("idle");
             cortex_m::asm::delay(500_000);
         }
     }
