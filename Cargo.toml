@@ -7,23 +7,34 @@ edition = "2018"
 [dependencies]
 cortex-m = "0.6"
 cortex-m-rt = "0.6"
-stm32f0xx-hal = { version = "0.16", features = ["rt"] } # Be careful updating, on 0.17 SPI is broken!
+#stm32f0xx-hal = { version = "0.16", features = ["rt"] } # Be careful updating, on 0.17 SPI is broken!
+stm32f0xx-hal = { path = "../stm32f0xx-hal", features = ["rt"] }
 cortex-m-rtic = "0.6.0-alpha.5"
-tim-systick-monotonic = { version = "0.1.0", path = "../tim-systick-monotonic", features = ["f0x1-tim15-tim17"] }
+tim-systick-monotonic = { version = "0.1.0", path = "../tim-systick-monotonic"}
 embedded-time = "0.12"
 embedded-hal = "0.2"
 vhrdcan = { path = "../vhrdcan", version = "0.1.0" }
 mcp25625 = { path = "../mcp25625", version = "0.1.0", optional = true }
 rtt-target = { version = "0.3", features = ["cortex-m"], optional = true }
+cfg-if = "1.0.0"
 
 [features]
+# Select module and variant if any
+module-button = []
+module-pi = []
+module-led = []
+module-afe = []
+module-afe-hx711 = []
+module-afe-lmp90100 = []
 # Select chip
-f051c8u = ["stm32f0xx-hal/stm32f051"]
-f072c8u = ["stm32f0xx-hal/stm32f072"]
+f051c8u = ["stm32f0xx-hal/stm32f051", "tim-systick-monotonic/f0x1-tim15-tim17"]
+f072c8u = ["stm32f0xx-hal/stm32f072", "tim-systick-monotonic/f0x2-tim15-tim17"]
 # Select CAN Bus driver, mcp25625 (for mcp2515 also) or mcp2518fd and/or canstm (only on F072)
 can-mcp25625 = ["mcp25625"]
 can-mcp2518fd = []
 can-stm = ["f072c8u"]
+# Enable CAN Bus logging or not
+can-printstat = ["log-level-debug"]
 # Select logging interface or none
 log-text-rtt = ["rtt-target"] # Log in text format over RTT
 log-text-can = [] # Log in text format over CAN

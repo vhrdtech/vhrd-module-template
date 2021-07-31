@@ -9,6 +9,7 @@ mod blinker;
 mod config;
 mod units;
 mod canbus;
+mod module;
 
 use stm32f0xx_hal as hal;
 use stm32f0xx_hal::stm32 as pac;
@@ -20,6 +21,7 @@ mod app {
     use tim_systick_monotonic::TimSystickMonotonic;
     use stm32f0xx_hal::prelude::*;
     use crate::blinker::{blinker_task, BlinkerEvent, BlinkerState};
+    use crate::canbus::{can_stm_task};
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
     use crate::log_info;
@@ -30,17 +32,27 @@ mod app {
     use stm32f0xx_hal::gpio::{PushPull, AF0, Output, Alternate};
     use stm32f0xx_hal::spi::Spi;
     use stm32f0xx_hal::gpio::gpioc::PC14;
+    use stm32f0xx_hal::exti::{GpioLine, ExtiLine, Exti, TriggerEdge};
+    use stm32f0xx_hal::syscfg::SYSCFG;
+    use stm32f0xx_hal::pac::Interrupt;
 
     #[shared]
     struct Shared {
+        mr: crate::module::Resources,
+
         blinker: Blinker,
 
-        #[cfg(feature = "can-mcp25625")]
-        mcp25625: Option<config::Mcp25625Instance>,
+        mcp_irq: config::Mcp25625Irq,
+        #[cfg(feature = "can-stm")]
+        can_stm: config::CanStmInstance,
     }
 
     #[local]
-    struct Local {}
+    struct Local {
+
+        #[cfg(feature = "can-mcp25625")]
+        can_mcp25625: Option<config::Mcp25625Instance>,
+    }
 
     #[monotonic(binds = SysTick, default = true)]
     type MyMono = TimSystickMonotonic<8_000_000>;
@@ -58,34 +70,50 @@ mod app {
         let mut dp: super::pac::Peripherals = cx.device;
         let mono = TimSystickMonotonic::new(cp.SYST, dp.TIM15, dp.TIM17, 8_000_000);
         let mut rcc = dp.RCC.configure().sysclk(8.mhz()).freeze(&mut dp.FLASH);
+        let mut exti = Exti::new(dp.EXTI);
+        let mut syscfg = SYSCFG::new(dp.SYSCFG, &mut rcc);
 
         let gpioa = dp.GPIOA.split(&mut rcc);
         let gpiob = dp.GPIOB.split(&mut rcc);
         let gpioc = dp.GPIOC.split(&mut rcc);
         let (
             led,
+
+            _can_rx,
+            _can_tx,
+            mut can_stby,
+
             _mcp25625_sck,
             _mcp25625_miso,
             _mcp25625_mosi,
             _mcp25625_cs,
+            mcp_irq,
 
         ) = cortex_m::interrupt::free(|cs| {
             (
                 gpioa.pa6,
 
+                gpioa.pa11.into_alternate_af4(cs),
+                gpioa.pa12.into_alternate_af4(cs),
+                gpioa.pa15.into_push_pull_output(cs),
+
                 gpiob.pb3.into_alternate_af0(cs),
                 gpiob.pb4.into_alternate_af0(cs),
                 gpiob.pb5.into_alternate_af0(cs),
                 gpioc.pc14.into_push_pull_output(cs),
+                gpioc.pc15.into_pull_up_input(cs),
 
 
             )
         });
+        can_stby.set_low().ok();
 
         #[cfg(feature = "can-mcp25625")]
-        let mcp25625 = match canbus::mcp25625_init(dp.SPI1, _mcp25625_sck, _mcp25625_miso, _mcp25625_mosi, _mcp25625_cs, &mut rcc) {
+        let can_mcp25625 = match canbus::can_mcp25625_init(dp.SPI1, _mcp25625_sck, _mcp25625_miso, _mcp25625_mosi, _mcp25625_cs, &mut rcc) {
             Ok(mcp25625) => {
                 log_info!("Mcp25625 init ok");
+                let mcp_irq_line = GpioLine::from_raw_line(mcp_irq.pin_number()).unwrap();
+                exti.listen_gpio(&mut syscfg, mcp_irq.port(), mcp_irq_line, TriggerEdge::Falling);
                 Some(mcp25625)
             }
             Err(e) => {
@@ -93,6 +121,9 @@ mod app {
                 None
             }
         };
+
+        #[cfg(feature = "can-stm")]
+        let can_stm = canbus::can_stm_init(dp.CAN, _can_tx, _can_rx, &mut rcc);
 
 
         let mut blinker = Blinker::new(dp.TIM16, led, &rcc);
@@ -107,14 +138,31 @@ mod app {
         // test_task::spawn().ok();
         // test_task2::spawn().ok();
 
+        #[cfg(feature = "module-button")]
+        let mr = crate::module::button::init();
+        #[cfg(feature = "module-led")]
+        let mr = crate::module::led::init();
+        #[cfg(feature = "module-pi")]
+        let mr = crate::module::pi::init();
+        #[cfg(feature = "module-afe")]
+        let mr = crate::module::afe::init();
+
         (
             Shared{
+                mr,
+
                 blinker,
-                #[cfg(feature = "can-mcp25625")]
-                mcp25625,
+
+                mcp_irq,
+                #[cfg(feature = "can-stm")]
+                can_stm,
 
             },
-            Local{},
+            Local{
+
+                #[cfg(feature = "can-mcp25625")]
+                can_mcp25625,
+            },
             init::Monotonics(mono)
         )
     }
@@ -137,6 +185,7 @@ mod app {
             // }
             // log_info!("idle");
             cortex_m::asm::delay(500_000);
+            rtic::pend(Interrupt::EXTI4_15);
         }
     }
 
@@ -174,8 +223,21 @@ mod app {
     //     test_task::spawn_after(Milliseconds::new(500u32)).ok();
     // }
 
+    #[task(binds = EXTI4_15, shared = [mcp_irq], local = [can_mcp25625])]
+    fn exti_4_15(mut cx: exti_4_15::Context) {
+        let mcp_irq_line = GpioLine::from_raw_line(cx.shared.mcp_irq.lock(|pin| pin.pin_number())).unwrap();
+        Exti::unpend(mcp_irq_line);
+        #[cfg(feature = "can-mcp25625")]
+        crate::canbus::can_mcp25625_irq(&mut cx);
+    }
+
     extern "Rust" {
         #[task(shared = [blinker], capacity = 2)]
         fn blinker_task(cx: blinker_task::Context, e: crate::blinker::BlinkerEvent);
+
+        #[task(binds = CEC_CAN, shared = [can_stm])]
+        fn can_stm_task(cx: can_stm_task::Context);
+
+
     }
 }
