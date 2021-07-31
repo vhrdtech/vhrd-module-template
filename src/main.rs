@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(const_option)]
 
 use rtic::app;
 use stm32f0xx_hal as hal;
@@ -28,9 +29,9 @@ mod app {
     use crate::canbus;
     use crate::config;
     use crate::log_info;
-    use crate::task::{health_check::health_check_task};
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
     use crate::task::blink::Blinker;
+    use crate::task::health_check::health_check_task;
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
@@ -246,16 +247,21 @@ mod app {
         crate::canbus::can_mcp25625_irq(&mut cx);
     }
 
+
+
     extern "Rust" {
         #[task(shared = [blinker], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
-        #[task(shared = [can_tx, uptime, health, ])]
+        #[task(
+            shared = [can_tx, uptime, health, ],
+            local = [
+                state: crate::task::health_check::State = crate::task::health_check::State::new()
+            ]
+        )]
         fn health_check_task(mut cx: health_check_task::Context);
 
         #[task(binds = CEC_CAN, shared = [can_tx, can_rx], local = [can_stm])]
         fn can_stm_task(cx: can_stm_task::Context);
-
-
     }
 }

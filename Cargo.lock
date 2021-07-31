@@ -175,6 +175,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc-any"
+version = "2.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79269446ee9793fb06fb297c61dd65e53e880fd10bdb222d544db1a98a2f083b"
+
+[[package]]
 name = "defmt"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -636,6 +642,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
 
 [[package]]
+name = "uavcan-llr"
+version = "0.1.0"
+dependencies = [
+ "crc-any",
+]
+
+[[package]]
 name = "ucd-trie"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -666,6 +679,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
+name = "vhrd-module-nvconfig"
+version = "0.1.0"
+
+[[package]]
 name = "vhrd-module-template"
 version = "0.1.0"
 dependencies = [
@@ -680,6 +697,8 @@ dependencies = [
  "rtt-target",
  "stm32f0xx-hal",
  "tim-systick-monotonic",
+ "uavcan-llr",
+ "vhrd-module-nvconfig",
  "vhrdcan",
 ]
 
