@@ -1,50 +1,51 @@
 #![no_std]
 #![no_main]
 
-#[macro_use]
-mod logging;
-mod error_handlers;
-mod vt100;
-mod blinker;
-mod config;
-mod units;
-mod canbus;
-mod module;
-
+use rtic::app;
 use stm32f0xx_hal as hal;
 use stm32f0xx_hal::stm32 as pac;
-use rtic::app;
+
+#[macro_use]
+mod logging;
+#[macro_use]
+mod canbus;
+mod error_handlers;
+mod vt100;
+mod config;
+mod units;
+mod module;
+mod task;
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC, FLASH])]
 mod app {
-    use crate::config;
-    use tim_systick_monotonic::TimSystickMonotonic;
+    use stm32f0xx_hal::exti::{Exti, ExtiLine, GpioLine, TriggerEdge};
+    use stm32f0xx_hal::pac::Interrupt;
     use stm32f0xx_hal::prelude::*;
-    use crate::blinker::{blinker_task, BlinkerEvent, BlinkerState};
-    use crate::canbus::{can_stm_task};
+    use stm32f0xx_hal::syscfg::SYSCFG;
+    use tim_systick_monotonic::TimSystickMonotonic;
+
+    use crate::canbus::can_stm_task;
+    use crate::canbus;
+    use crate::config;
+    use crate::log_info;
+    use crate::task::{health_check::health_check_task};
+    use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
+    use crate::task::blink::Blinker;
+
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
-    use crate::log_info;
-    use crate::blinker::Blinker;
-    use embedded_time::duration::Milliseconds;
-    use crate::canbus;
-    use stm32f0xx_hal::gpio::gpiob::{PB3, PB5, PB4};
-    use stm32f0xx_hal::gpio::{PushPull, AF0, Output, Alternate};
-    use stm32f0xx_hal::spi::Spi;
-    use stm32f0xx_hal::gpio::gpioc::PC14;
-    use stm32f0xx_hal::exti::{GpioLine, ExtiLine, Exti, TriggerEdge};
-    use stm32f0xx_hal::syscfg::SYSCFG;
-    use stm32f0xx_hal::pac::Interrupt;
 
     #[shared]
     struct Shared {
         mr: crate::module::Resources,
 
-        blinker: Blinker,
+        can_tx: config::CanTxQueue,
+        can_rx: config::CanRxQueue,
 
-        mcp_irq: config::Mcp25625Irq,
-        #[cfg(feature = "can-stm")]
-        can_stm: config::CanStmInstance,
+        blinker: Blinker,
+        uptime: u32,
+
+
     }
 
     #[local]
@@ -52,6 +53,9 @@ mod app {
 
         #[cfg(feature = "can-mcp25625")]
         can_mcp25625: Option<config::Mcp25625Instance>,
+        mcp_irq: config::Mcp25625Irq,
+        #[cfg(feature = "can-stm")]
+        can_stm: config::CanStmInstance,
     }
 
     #[monotonic(binds = SysTick, default = true)]
@@ -128,7 +132,9 @@ mod app {
 
         let mut blinker = Blinker::new(dp.TIM16, led, &rcc);
         blinker.set_global_brigthness_percent(15);
-        blinker_task::spawn(BlinkerEvent::SetState(BlinkerState::Breath)).ok();
+        blink_task::spawn(BlinkerEvent::SetState(BlinkerState::Breath)).ok();
+
+        health_check_task::spawn().ok();
 
         // #[used]
         // #[no_mangle]
@@ -151,17 +157,19 @@ mod app {
             Shared{
                 mr,
 
-                blinker,
+                can_tx: heapless::BinaryHeap::new(),
+                can_rx: heapless::BinaryHeap::new(),
 
-                mcp_irq,
-                #[cfg(feature = "can-stm")]
-                can_stm,
+                blinker,
+                uptime: 0,
 
             },
             Local{
-
                 #[cfg(feature = "can-mcp25625")]
                 can_mcp25625,
+                mcp_irq,
+                #[cfg(feature = "can-stm")]
+                can_stm,
             },
             init::Monotonics(mono)
         )
@@ -185,7 +193,6 @@ mod app {
             // }
             // log_info!("idle");
             cortex_m::asm::delay(500_000);
-            rtic::pend(Interrupt::EXTI4_15);
         }
     }
 
@@ -223,9 +230,15 @@ mod app {
     //     test_task::spawn_after(Milliseconds::new(500u32)).ok();
     // }
 
-    #[task(binds = EXTI4_15, shared = [mcp_irq], local = [can_mcp25625])]
+
+    #[task(shared = [can_rx])]
+    fn can_rx_router(cx: can_rx_router::Context) {
+
+    }
+
+    #[task(binds = EXTI4_15, shared = [can_tx, can_rx], local = [can_mcp25625, mcp_irq])]
     fn exti_4_15(mut cx: exti_4_15::Context) {
-        let mcp_irq_line = GpioLine::from_raw_line(cx.shared.mcp_irq.lock(|pin| pin.pin_number())).unwrap();
+        let mcp_irq_line = GpioLine::from_raw_line(cx.local.mcp_irq.pin_number()).unwrap();
         Exti::unpend(mcp_irq_line);
         #[cfg(feature = "can-mcp25625")]
         crate::canbus::can_mcp25625_irq(&mut cx);
@@ -233,9 +246,12 @@ mod app {
 
     extern "Rust" {
         #[task(shared = [blinker], capacity = 2)]
-        fn blinker_task(cx: blinker_task::Context, e: crate::blinker::BlinkerEvent);
+        fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
-        #[task(binds = CEC_CAN, shared = [can_stm])]
+        #[task(shared = [can_tx, uptime])]
+        fn health_check_task(mut cx: health_check_task::Context);
+
+        #[task(binds = CEC_CAN, shared = [can_tx, can_rx], local = [can_stm])]
         fn can_stm_task(cx: can_stm_task::Context);
 
 

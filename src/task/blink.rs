@@ -95,7 +95,7 @@ impl Blinker {
 use rtic::Mutex;
 use rtic::time::duration::{Milliseconds};
 
-pub fn blinker_task(mut cx: app::blinker_task::Context, e: BlinkerEvent) {
+pub fn blink_task(mut cx: app::blink_task::Context, e: BlinkerEvent) {
     cx.shared.blinker.lock(|b: &mut Blinker| {
         match e {
             BlinkerEvent::SetState(state) => {
@@ -106,7 +106,7 @@ pub fn blinker_task(mut cx: app::blinker_task::Context, e: BlinkerEvent) {
                     },
                     BlinkerState::Breath => {
                         b.current_duty = 0;
-                        app::blinker_task::spawn_after(config::BLINKER_UPDATE_PERIOD, BlinkerEvent::Internal).ok();
+                        app::blink_task::spawn_after(config::BLINKER_UPDATE_PERIOD, BlinkerEvent::Internal).ok();
                     }
                 }
             }
@@ -124,7 +124,7 @@ pub fn blinker_task(mut cx: app::blinker_task::Context, e: BlinkerEvent) {
                         } else {
                             b.current_duty -= b.duty_step;
                         }
-                        app::blinker_task::spawn_after(config::BLINKER_UPDATE_PERIOD, BlinkerEvent::Internal).ok();
+                        app::blink_task::spawn_after(config::BLINKER_UPDATE_PERIOD, BlinkerEvent::Internal).ok();
                     },
                     _ => {}
                 }

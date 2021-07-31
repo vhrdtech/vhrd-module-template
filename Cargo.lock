@@ -675,6 +675,7 @@ dependencies = [
  "cortex-m-rtic",
  "embedded-hal",
  "embedded-time",
+ "heapless 0.7.3",
  "mcp25625",
  "rtt-target",
  "stm32f0xx-hal",

@@ -4,7 +4,15 @@ use embedded_time::duration::{Seconds, Milliseconds};
 pub const BLINKER_UPDATE_PERIOD: Milliseconds = Milliseconds(20);
 pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
 
-/// MCP2515
+pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
+
+// CAN Bus
+use heapless::binary_heap::{BinaryHeap, Min};
+use vhrdcan::frame::Frame;
+pub type CanTxQueue = BinaryHeap<Frame<8>, Min, 32>;
+pub type CanRxQueue = BinaryHeap<Frame<8>, Min, 32>;
+
+/// CAN Bus: MCP2515
 #[cfg(feature = "can-mcp25625")]
 pub mod mcp25625_config {
     use crate::{hal, pac};
@@ -28,6 +36,7 @@ pub use mcp25625_config::*;
 #[cfg(not(feature = "can-mcp25625"))]
 pub type Mcp25625Instance = ();
 
+/// CAN Bus: STM
 #[cfg(feature = "can-stm")]
 pub mod can_stm_config {
     use crate::hal;
