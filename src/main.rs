@@ -44,6 +44,7 @@ mod app {
 
         blinker: Blinker,
         uptime: u32,
+        health: crate::task::health_check::Health,
 
 
     }
@@ -162,6 +163,7 @@ mod app {
 
                 blinker,
                 uptime: 0,
+                health: crate::task::health_check::Health::Norminal,
 
             },
             Local{
@@ -248,7 +250,7 @@ mod app {
         #[task(shared = [blinker], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
-        #[task(shared = [can_tx, uptime])]
+        #[task(shared = [can_tx, uptime, health, ])]
         fn health_check_task(mut cx: health_check_task::Context);
 
         #[task(binds = CEC_CAN, shared = [can_tx, can_rx], local = [can_stm])]

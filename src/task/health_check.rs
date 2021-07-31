@@ -4,6 +4,16 @@ use vhrdcan::FrameId;
 use rtic::Mutex;
 use rtic::rtic_monotonic::Milliseconds;
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Health {
+    /// not a typo, fully functioning node
+    Norminal = 0b000,
+    /// node can perform it's task, but is experiencing troubles
+    Warning = 0b001,
+    /// node cannot perform it's task
+    Failure = 0b010,
+}
+
 pub fn health_check_task(mut cx: crate::app::health_check_task::Context) {
     let uptime = if config::HEALTH_CHECK_PERIOD == Milliseconds::new(1000u32) {
         cx.shared.uptime.lock(|uptime: &mut u32| {
@@ -15,8 +25,9 @@ pub fn health_check_task(mut cx: crate::app::health_check_task::Context) {
     };
     let mut payload = [0u8; 8];
     payload[0..=3].copy_from_slice(&uptime.to_le_bytes());
+    payload[4] = cx.shared.health.lock(|h| *h as u8);
     let id = FrameId::new_extended(0x456).unwrap();
-    let frame = Frame::new_move(id, payload, 8).unwrap();
+    let frame = Frame::new_move(id, payload, 5).unwrap();
     can_send!(cx, frame);
     app::health_check_task::spawn_after(config::HEALTH_CHECK_PERIOD).ok();
 }
