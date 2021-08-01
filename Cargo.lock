@@ -646,6 +646,7 @@ name = "uavcan-llr"
 version = "0.1.0"
 dependencies = [
  "crc-any",
+ "vhrdcan",
 ]
 
 [[package]]
