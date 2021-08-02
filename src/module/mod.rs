@@ -1,16 +1,8 @@
 #[cfg(feature = "module-pi")]
 pub mod pi;
-#[cfg(feature = "module-pi")]
-pub use pi::Resources;
 #[cfg(feature = "module-led")]
 pub mod led;
-#[cfg(feature = "module-led")]
-pub use led::Resources;
 #[cfg(feature = "module-button")]
 pub mod button;
-#[cfg(feature = "module-button")]
-pub use button::Resources;
 #[cfg(feature = "module-afe")]
 pub mod afe;
-#[cfg(feature = "module-afe")]
-pub use afe::Resources;

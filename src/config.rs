@@ -35,6 +35,8 @@ pub mod mcp25625_config {
 pub use mcp25625_config::*;
 #[cfg(not(feature = "can-mcp25625"))]
 pub type Mcp25625Instance = ();
+#[cfg(not(feature = "can-mcp25625"))]
+pub type Mcp25625Irq = ();
 
 /// CAN Bus: STM
 #[cfg(feature = "can-stm")]

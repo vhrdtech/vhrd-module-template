@@ -336,6 +336,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hx711"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b6803c26a04bdfa8daa575c2411f55115f3941a38d7ff8748191c7dbd39ffa0"
+dependencies = [
+ "embedded-hal",
+ "nb 1.0.0",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -631,6 +641,7 @@ name = "tim-systick-monotonic"
 version = "0.1.0"
 dependencies = [
  "cortex-m 0.7.3",
+ "embedded-hal",
  "rtic-monotonic",
  "stm32f0",
 ]
@@ -694,7 +705,9 @@ dependencies = [
  "embedded-hal",
  "embedded-time",
  "heapless 0.7.3",
+ "hx711",
  "mcp25625",
+ "nb 1.0.0",
  "rtt-target",
  "stm32f0xx-hal",
  "tim-systick-monotonic",

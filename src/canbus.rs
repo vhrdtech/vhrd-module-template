@@ -1,5 +1,4 @@
 use crate::{config, hal};
-use cfg_if::cfg_if;
 use rtic::Mutex;
 
 macro_rules! can_send {
@@ -78,7 +77,7 @@ fn mcp25625_configure(mcp25625: &mut config::Mcp25625Instance) -> Result<(), Mcp
 
 macro_rules! log_debug_if_cps {
     ($($arg:tt)*) => {
-        cfg_if! {
+        cfg_if::cfg_if! {
             if #[cfg(feature = "can-printstat")] {
                 log_debug!(=>1, $($arg)*);
             }
@@ -190,5 +189,107 @@ pub fn can_stm_init(
     can
 }
 
-pub fn can_stm_task(cx: crate::app::can_stm_task::Context) {
+#[cfg(feature = "can-stm")]
+use hal::can::bxcan::Frame as BxFrame;
+
+pub struct CanStmState {
+    #[cfg(feature = "can-stm")]
+    pushed_out: Option<BxFrame>,
+}
+impl CanStmState {
+    pub const fn new() -> Self {
+        CanStmState {
+            #[cfg(feature = "can-stm")]
+            pushed_out: None
+        }
+    }
+}
+
+#[cfg(feature = "can-stm")]
+pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
+    log_debug!("can_irq");
+    use hal::can::bxcan::Data as BxData;
+    use vhrdcan::Frame;
+
+    let can: &mut config::CanStmInstance = cx.local.can_stm;
+    match can.receive() {
+        Ok(frame) => {
+            if frame.is_data_frame() {
+                let frame = Frame::<8>::new(bxcanid2vhrdcanid(frame.id()), frame.data().unwrap()).unwrap();
+                log_debug_if_cps!("RX: {}", frame);
+                match cx.shared.can_rx.lock(|rx| rx.push(frame)) {
+                    Ok(_) => {
+
+                    }
+                    Err(_) => {
+
+                    }
+                }
+            }
+        }
+        Err(_) => {}
+    }
+
+    cx.local.state.pushed_out = match &cx.local.state.pushed_out {
+        Some(frame) => {
+            match can.transmit(&frame) {
+                Ok(maybe_frame) => {
+                    maybe_frame
+                }
+                Err(_) => {
+
+                    None
+                }
+            }
+        }
+        None => {
+            None
+        }
+    };
+    if cx.local.state.pushed_out.is_some() {
+        return;
+    }
+
+    loop {
+        match cx.shared.can_tx.lock(|tx: &mut config::CanTxQueue| tx.pop()) {
+            Some(frame) => {
+                match can.transmit(&BxFrame::new_data(vhrdcanid2bxcanid(frame.id), BxData::new(frame.data()).unwrap())) {
+                    Ok(maybe_frame) => {
+                        match maybe_frame {
+                            Some(frame) => {
+                                cx.local.state.pushed_out = Some(frame);
+                                break;
+                            }
+                            None => {
+
+                            }
+                        }
+                    }
+                    Err(_) => {}
+                }
+            }
+            None => {
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(feature = "can-stm")]
+fn vhrdcanid2bxcanid(id: FrameId) -> crate::hal::can::bxcan::Id {
+    use hal::can::bxcan::{Id, StandardId, ExtendedId};
+    match id {
+        FrameId::Standard(sid) => { Id::Standard(StandardId::new(sid.id()).unwrap()) }
+        FrameId::Extended(eid) => { Id::Extended(ExtendedId::new(eid.id()).unwrap()) }
+    }
+}
+
+#[cfg(feature = "can-stm")]
+fn bxcanid2vhrdcanid(id: crate::hal::can::bxcan::Id) -> FrameId {
+    use hal::can::bxcan::Id;
+    use vhrdcan::id::{StandardId, ExtendedId};
+    match id {
+        Id::Standard(sid) => { FrameId::Standard( unsafe { StandardId::new_unchecked(sid.as_raw()) } )}
+        Id::Extended(eid) => { FrameId::Extended( unsafe { ExtendedId::new_unchecked(eid.as_raw()) } )}
+    }
 }
