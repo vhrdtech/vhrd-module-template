@@ -3,10 +3,15 @@ use rtic::Mutex;
 
 macro_rules! can_send {
     ($cx:expr, $frame:expr) => {
-        $cx.shared.can_tx.lock(|tx| tx.push($frame)).ok();
-
+        #[cfg(feature = "can-mcp25625")]
+        $cx.shared.can_mcp_tx.lock(|tx| tx.push($frame)).ok();
         #[cfg(feature = "can-mcp25625")]
         rtic::pend(crate::config::MCP25625_IRQ_HANDLER);
+
+        #[cfg(feature = "can-stm")]
+        $cx.shared.can_stm_tx.lock(|tx| tx.push($frame)).ok();
+        #[cfg(feature = "can-stm")]
+        rtic::pend(crate::pac::Interrupt::CEC_CAN);
     };
 }
 
@@ -113,7 +118,7 @@ pub fn can_mcp25625_irq(cx: &mut crate::app::exti_4_15::Context) {
                     continue;
                 }
                 let frame = mcp25625.receive(b.unwrap());
-                match cx.shared.can_rx.lock(|rx| rx.push(frame)) {
+                match cx.shared.can_mcp_rx.lock(|rx| rx.push(frame)) {
                     Ok(_) => {
                         log_debug_if_cps!("RX: {:?}", frame);
                         new_frames = true;
@@ -132,7 +137,7 @@ pub fn can_mcp25625_irq(cx: &mut crate::app::exti_4_15::Context) {
             log_debug_if_cps!("TEC: {}, REC: {}", _tec, _rec);
 
             for _ in 0..3 {
-                let maybe_frame = cx.shared.can_tx.lock(|tx| tx.peek().cloned());
+                let maybe_frame = cx.shared.can_mcp_tx.lock(|tx| tx.peek().cloned());
                 match maybe_frame {
                     Some(frame) => {
                         // Treat extended id frames as uavcan, use only one buffer for them to avoid priority inversion
@@ -143,7 +148,7 @@ pub fn can_mcp25625_irq(cx: &mut crate::app::exti_4_15::Context) {
                         };
                         match mcp25625.send(frame.as_frame_ref(), buffer_choice, McpPriority::Highest) {
                             Ok(_) => {
-                                let _ = cx.shared.can_tx.lock(|tx| tx.pop());
+                                let _ = cx.shared.can_mcp_tx.lock(|tx| tx.pop());
                                 log_debug_if_cps!("TX: {:?}", frame);
                             }
                             Err(_e) => {
@@ -183,9 +188,9 @@ pub fn can_stm_init(
     can.enable().ok();
 
     use hal::can::bxcan::Interrupt;
-    can.enable_interrupt(Interrupt::Fifo0MessagePending);
-    can.enable_interrupt(Interrupt::Fifo1MessagePending);
-    can.enable_interrupt(Interrupt::TransmitMailboxEmpty);
+    // can.enable_interrupt(Interrupt::Fifo0MessagePending);
+    // can.enable_interrupt(Interrupt::Fifo1MessagePending);
+    // can.enable_interrupt(Interrupt::TransmitMailboxEmpty);
     can
 }
 
@@ -212,32 +217,42 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
     use vhrdcan::Frame;
 
     let can: &mut config::CanStmInstance = cx.local.can_stm;
-    match can.receive() {
-        Ok(frame) => {
-            if frame.is_data_frame() {
-                let frame = Frame::<8>::new(bxcanid2vhrdcanid(frame.id()), frame.data().unwrap()).unwrap();
-                log_debug_if_cps!("RX: {}", frame);
-                match cx.shared.can_rx.lock(|rx| rx.push(frame)) {
-                    Ok(_) => {
+    unsafe {
+        let dp = hal::pac::Peripherals::steal();
+        log_debug!("msr:{:032b}", dp.CAN.msr.read().bits());
+    }
+    for _ in 0..=1 {
+        match can.receive() {
+            Ok(frame) => {
+                log_debug_if_cps!("R");
+                if frame.is_data_frame() {
+                    let frame = Frame::<8>::new(bxcanid2vhrdcanid(frame.id()), frame.data().unwrap()).unwrap();
+                    log_debug_if_cps!("RX: {:?}", frame);
+                    match cx.shared.can_stm_rx.lock(|rx| rx.push(frame)) {
+                        Ok(_) => {
 
-                    }
-                    Err(_) => {
+                        }
+                        Err(_) => {
 
+                        }
                     }
                 }
             }
+            Err(_) => {
+                // log_debug_if_cps!("RX err");
+            }
         }
-        Err(_) => {}
     }
 
     cx.local.state.pushed_out = match &cx.local.state.pushed_out {
         Some(frame) => {
             match can.transmit(&frame) {
                 Ok(maybe_frame) => {
+                    log_debug_if_cps!("TXPu -> push");
                     maybe_frame
                 }
                 Err(_) => {
-
+                    log_debug_if_cps!("TXPu -> none");
                     None
                 }
             }
@@ -251,21 +266,24 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
     }
 
     loop {
-        match cx.shared.can_tx.lock(|tx: &mut config::CanTxQueue| tx.pop()) {
+        match cx.shared.can_stm_tx.lock(|tx: &mut config::CanTxQueue| tx.pop()) {
             Some(frame) => {
                 match can.transmit(&BxFrame::new_data(vhrdcanid2bxcanid(frame.id), BxData::new(frame.data()).unwrap())) {
                     Ok(maybe_frame) => {
                         match maybe_frame {
                             Some(frame) => {
                                 cx.local.state.pushed_out = Some(frame);
+                                log_debug_if_cps!("TX -> push");
                                 break;
                             }
                             None => {
-
+                                log_debug_if_cps!("TX -> none");
                             }
                         }
                     }
-                    Err(_) => {}
+                    Err(_) => {
+                        unreachable!();
+                    }
                 }
             }
             None => {

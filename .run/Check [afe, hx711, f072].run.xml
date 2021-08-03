@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
-    <option name="command" value="run --release --features=&quot;f051c8u, log-text-rtt, log-level-debug&quot;" />
+  <configuration default="false" name="Check [afe, hx711, f072]" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="+nightly check --features=&quot;module-afe, module-afe-hx711, f072c8u, can-stm, log-text-rtt, log-level-debug&quot; --color=always" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

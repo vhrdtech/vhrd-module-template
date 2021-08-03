@@ -41,14 +41,18 @@ mod app {
 
     #[shared]
     struct Shared {
-        can_tx: config::CanTxQueue,
-        can_rx: config::CanRxQueue,
+        #[cfg(feature = "can-stm")]
+        can_stm_tx: config::CanTxQueue,
+        #[cfg(feature = "can-stm")]
+        can_stm_rx: config::CanRxQueue,
+        #[cfg(feature = "can-mcp25625")]
+        can_mcp_tx: config::CanTxQueue,
+        #[cfg(feature = "can-mcp25625")]
+        can_mcp_rx: config::CanRxQueue,
 
         blinker: Blinker,
         uptime: u32,
         health: crate::task::health_check::Health,
-
-
     }
 
     #[local]
@@ -199,8 +203,14 @@ mod app {
 
         (
             Shared{
-                can_tx: heapless::BinaryHeap::new(),
-                can_rx: heapless::BinaryHeap::new(),
+                #[cfg(feature = "can-stm")]
+                can_stm_tx: heapless::BinaryHeap::new(),
+                #[cfg(feature = "can-stm")]
+                can_stm_rx: heapless::BinaryHeap::new(),
+                #[cfg(feature = "can-mcp25625")]
+                can_mcp_tx: heapless::BinaryHeap::new(),
+                #[cfg(feature = "can-mcp25625")]
+                can_mcp_rx: heapless::BinaryHeap::new(),
 
                 blinker,
                 uptime: 0,
@@ -286,12 +296,12 @@ mod app {
     // }
 
 
-    #[task(shared = [can_rx])]
+    #[task(shared = [can_mcp_rx, can_stm_rx])]
     fn can_rx_router(_cx: can_rx_router::Context) {
 
     }
 
-    #[task(binds = EXTI4_15, shared = [can_tx, can_rx], local = [can_mcp25625, mcp_irq])]
+    #[task(binds = EXTI4_15, shared = [can_mcp_tx, can_mcp_rx], local = [can_mcp25625, mcp_irq])]
     #[allow(unused_mut)]
     fn exti_4_15(mut cx: exti_4_15::Context) {
         cfg_if! {
@@ -308,7 +318,7 @@ mod app {
 
     #[task(
         binds = CEC_CAN,
-        shared = [can_tx, can_rx],
+        shared = [can_stm_tx, can_stm_rx],
         local = [
             can_stm,
 
@@ -326,7 +336,7 @@ mod app {
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
         #[task(
-            shared = [can_tx, uptime, health, ],
+            shared = [can_mcp_tx, can_stm_tx, uptime, health, ],
             local = [
                 state: crate::task::health_check::State = crate::task::health_check::State::new()
             ]
