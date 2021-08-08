@@ -210,6 +210,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812b30ff14930407c86a23e256ac050b8e6913f597adcc88e29d40517f7a16de"
 
 [[package]]
+name = "drv8323"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+]
+
+[[package]]
 name = "embedded-can"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -702,6 +709,7 @@ dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",
  "cortex-m-rtic",
+ "drv8323",
  "embedded-hal",
  "embedded-time",
  "heapless 0.7.3",

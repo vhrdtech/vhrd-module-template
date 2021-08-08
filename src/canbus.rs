@@ -179,18 +179,26 @@ pub fn can_stm_init(
     can_rx: config::CanRx,
     rcc: &mut hal::rcc::Rcc
 ) -> config::CanStmInstance {
+    use stm32f0xx_hal::can::bxcan::filter::{BankConfig, Mask32};
+
     let can = hal::can::CanInstance::new(can_peripheral, can_tx, can_rx, rcc);
     let mut can = hal::can::bxcan::Can::new(can);
     can.modify_config()
         .set_loopback(false)
         .set_silent(false)
         .set_bit_timing(0x00050000);
+    {
+        let mut filters = can.modify_filters();
+        filters.enable_bank(0, BankConfig::Mask32(Mask32::accept_all()));
+    }
     can.enable().ok();
 
     use hal::can::bxcan::Interrupt;
     // can.enable_interrupt(Interrupt::Fifo0MessagePending);
     // can.enable_interrupt(Interrupt::Fifo1MessagePending);
-    // can.enable_interrupt(Interrupt::TransmitMailboxEmpty);
+    can.enable_interrupt(Interrupt::Fifo0Full);
+    // can.enable_interrupt(Interrupt::Fifo1Full); // endless interrupt
+    can.enable_interrupt(Interrupt::TransmitMailboxEmpty);
     can
 }
 
@@ -212,15 +220,16 @@ impl CanStmState {
 
 #[cfg(feature = "can-stm")]
 pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
-    log_debug!("can_irq");
+    // log_debug!("can_irq");
     use hal::can::bxcan::Data as BxData;
     use vhrdcan::Frame;
 
     let can: &mut config::CanStmInstance = cx.local.can_stm;
-    unsafe {
-        let dp = hal::pac::Peripherals::steal();
-        log_debug!("msr:{:032b}", dp.CAN.msr.read().bits());
-    }
+    can.clear_wakeup_interrupt();
+    // unsafe {
+    //     let dp = hal::pac::Peripherals::steal();
+    //     log_debug!("msr:{:032b}", dp.CAN.msr.read().bits());
+    // }
     for _ in 0..=1 {
         match can.receive() {
             Ok(frame) => {

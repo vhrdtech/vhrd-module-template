@@ -44,7 +44,7 @@ pub fn init_hx711(
 pub fn idle(cx: app::idle::Context) -> ! {
     let hx711: &mut Hx711Instance = cx.local.hx711;
 
-    const N: i32 = 8;
+    const N: i32 = 16;
     let mut val: i32 = 0;
     hx711.set_mode(hx711::Mode::ChAGain128).ok();
     for _ in 0..N {

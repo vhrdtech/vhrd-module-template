@@ -120,19 +120,22 @@ mod app {
         let (
             led,
 
-            _pa8, _pa10,
+            pa8, pa10,
 
-            _can_rx,
-            _can_tx,
+            can_rx,
+            can_tx,
             mut can_stby,
 
-            _mcp25625_sck,
-            _mcp25625_miso,
-            _mcp25625_mosi,
-            _pb6,
-            _pb7,
-            _pb8,
-            _mcp25625_cs,
+            pb0, pb1, pb2,
+            mcp25625_sck,
+            mcp25625_miso,
+            mcp25625_mosi,
+            pb6,
+            pb7,
+            pb8,
+            pb9, pb10, pb11, pb12, pb13, pb14, pb15,
+
+            mcp25625_cs,
             mcp_irq,
 
         ) = cortex_m::interrupt::free(|cs| {
@@ -145,12 +148,23 @@ mod app {
                 gpioa.pa12.into_alternate_af4(cs),
                 gpioa.pa15.into_push_pull_output(cs),
 
+                gpiob.pb0,
+                gpiob.pb1,
+                gpiob.pb2,
                 gpiob.pb3.into_alternate_af0(cs),
                 gpiob.pb4.into_alternate_af0(cs),
                 gpiob.pb5.into_alternate_af0(cs),
                 gpiob.pb6,
                 gpiob.pb7,
                 gpiob.pb8,
+                gpiob.pb9,
+                gpiob.pb10,
+                gpiob.pb11,
+                gpiob.pb12,
+                gpiob.pb13,
+                gpiob.pb14,
+                gpiob.pb15,
+
                 gpioc.pc14.into_push_pull_output(cs),
                 gpioc.pc15.into_pull_up_input(cs),
 
@@ -160,7 +174,7 @@ mod app {
         can_stby.set_low().ok();
 
         #[cfg(feature = "can-mcp25625")]
-        let can_mcp25625 = match canbus::can_mcp25625_init(dp.SPI1, _mcp25625_sck, _mcp25625_miso, _mcp25625_mosi, _mcp25625_cs, &mut rcc) {
+        let can_mcp25625 = match canbus::can_mcp25625_init(dp.SPI1, mcp25625_sck, mcp25625_miso, mcp25625_mosi, mcp25625_cs, &mut rcc) {
             Ok(mcp25625) => {
                 log_info!("Mcp25625 init ok");
                 use hal::exti::{GpioLine, TriggerEdge, ExtiLine};
@@ -175,7 +189,7 @@ mod app {
         };
 
         #[cfg(feature = "can-stm")]
-        let can_stm = canbus::can_stm_init(dp.CAN, _can_tx, _can_rx, &mut rcc);
+        let can_stm = canbus::can_stm_init(dp.CAN, can_tx, can_rx, &mut rcc);
 
 
         let mut blinker = Blinker::new(dp.TIM16, led, &rcc);
@@ -195,11 +209,11 @@ mod app {
         #[cfg(feature = "module-button")]
         let _mr = crate::module::button::init();
         #[cfg(feature = "module-led")]
-        let mr = crate::module::led::init();
+        let _mr = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12, dp.SPI2, &mut rcc);
         #[cfg(feature = "module-pi")]
-        let mr = crate::module::pi::init();
+        let _mr = crate::module::pi::init();
         #[cfg(feature = "module-afe-hx711")]
-        let (hx711_rate, hx711) = crate::module::afe::init_hx711(mono.new_handle(),_pa8, _pb6, _pa10, _pb7, _pb8);
+        let (hx711_rate, hx711) = crate::module::afe::init_hx711(mono.new_handle(),pa8, pb6, pa10, pb7, pb8);
 
         (
             Shared{
