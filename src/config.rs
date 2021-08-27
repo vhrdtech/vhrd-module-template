@@ -27,7 +27,7 @@ pub mod mcp25625_config {
     pub type Mcp25625Mosi = PB5<Alternate<AF0>>;
     pub type Mcp25625Cs = PC14<Output<PushPull>>;
     pub type Mcp25625Spi = SPI1;
-    pub type Mcp25625Instance = mcp25625::MCP25625<Spi<Mcp25625Spi, Mcp25625Sck, Mcp25625Miso, Mcp25625Mosi>, Mcp25625Cs>;
+    pub type Mcp25625Instance = mcp25625::MCP25625<Spi<Mcp25625Spi, Mcp25625Sck, Mcp25625Miso, Mcp25625Mosi, hal::spi::EightBit>, Mcp25625Cs>;
     pub type Mcp25625Irq = PC15<Input<PullUp>>;
     pub const MCP25625_IRQ_HANDLER: Interrupt = Interrupt::EXTI4_15;
 }

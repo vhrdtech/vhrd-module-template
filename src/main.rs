@@ -12,10 +12,11 @@ mod logging;
 mod canbus;
 mod error_handlers;
 mod vt100;
-mod config;
+pub mod config;
 mod units;
 mod module;
 mod task;
+mod prelude;
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC, FLASH])]
 mod app {
@@ -35,6 +36,9 @@ mod app {
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
     use crate::task::blink::Blinker;
     use crate::task::health_check::health_check_task;
+    #[cfg(feature = "module-button")]
+    use crate::module::button::button_task;
+    use crate::module::can_rx_router;
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
@@ -68,6 +72,9 @@ mod app {
         hx711_rate: module::afe::Hx711Rate,
         #[cfg(feature = "module-afe-hx711")]
         hx711: module::afe::Hx711Instance,
+
+        #[cfg(feature = "module-button")]
+        mr: module::button::Resources,
     }
 
     #[monotonic(binds = SysTick, default = true)]
@@ -118,7 +125,9 @@ mod app {
         let gpioc = dp.GPIOC.split(&mut rcc);
         #[allow(unused_variables)]
         let (
+            pa5,
             led,
+            pa7,
 
             pa8, pa10,
 
@@ -140,7 +149,9 @@ mod app {
 
         ) = cortex_m::interrupt::free(|cs| {
             (
+                gpioa.pa5,
                 gpioa.pa6,
+                gpioa.pa7,
 
                 gpioa.pa8, gpioa.pa10,
 
@@ -207,13 +218,20 @@ mod app {
         // test_task2::spawn().ok();
 
         #[cfg(feature = "module-button")]
-        let _mr = crate::module::button::init();
+        let mr = crate::module::button::init(pb0, pb1, pb2, pb12, pa5, pa7, pa8);
+        #[cfg(feature = "module-button")]
+        button_task::spawn().ok();
+
         #[cfg(feature = "module-led")]
         let _mr = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12, dp.SPI2, &mut rcc);
         #[cfg(feature = "module-pi")]
-        let _mr = crate::module::pi::init();
+        let _mr = crate::module::pi::init(pb0);
         #[cfg(feature = "module-afe-hx711")]
         let (hx711_rate, hx711) = crate::module::afe::init_hx711(mono.new_handle(),pa8, pb6, pa10, pb7, pb8);
+        #[cfg(feature = "module-afe-lmp")]
+        let _ = crate::module::afe::init_lmp();
+
+
 
         (
             Shared{
@@ -242,12 +260,28 @@ mod app {
                 hx711_rate,
                 #[cfg(feature = "module-afe-hx711")]
                 hx711,
+
+                #[cfg(feature = "module-button")]
+                mr,
+
             },
             init::Monotonics(mono)
         )
     }
 
-    #[idle(local = [hx711, hx711_rate])]
+    #[idle(
+        shared = [
+            can_stm_tx,
+            can_mcp_tx,
+        ],
+        local = [
+            hx711,
+            hx711_rate,
+
+            #[cfg(feature = "module-afe-hx711")]
+            state: crate::module::afe::State = crate::module::afe::State::new()
+        ]
+    )]
     fn idle(cx: idle::Context) -> ! {
         // loop {
             // rprintln!("idle");
@@ -310,10 +344,7 @@ mod app {
     // }
 
 
-    #[task(shared = [can_mcp_rx, can_stm_rx])]
-    fn can_rx_router(_cx: can_rx_router::Context) {
 
-    }
 
     #[task(binds = EXTI4_15, shared = [can_mcp_tx, can_mcp_rx], local = [can_mcp25625, mcp_irq])]
     #[allow(unused_mut)]
@@ -357,6 +388,10 @@ mod app {
         )]
         fn health_check_task(mut cx: health_check_task::Context);
 
+        #[task(local = [mr], shared = [can_mcp_tx, can_stm_tx, ])]
+        fn button_task(cx: button_task::Context);
 
+        #[task(shared = [can_mcp_rx, can_stm_rx])]
+        fn can_rx_router(_cx: can_rx_router::Context);
     }
 }
