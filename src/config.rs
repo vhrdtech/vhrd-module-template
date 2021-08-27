@@ -6,6 +6,16 @@ pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
 
 pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
+
+#[cfg(feature = "module-pi")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(5).unwrap();
+#[cfg(feature = "module-led")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(4).unwrap();
+#[cfg(feature = "module-button")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
+#[cfg(feature = "module-afe")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(2).unwrap();
+
 // CAN Bus
 use heapless::binary_heap::{BinaryHeap, Min};
 use vhrdcan::frame::Frame;
@@ -50,5 +60,7 @@ pub mod can_stm_config {
 }
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
+use uavcan_llr::types::NodeId;
+
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();

@@ -36,8 +36,6 @@ mod app {
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
     use crate::task::blink::Blinker;
     use crate::task::health_check::health_check_task;
-    #[cfg(feature = "module-button")]
-    use crate::module::button::button_task;
     use crate::module::can_rx_router;
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
@@ -376,6 +374,12 @@ mod app {
         crate::canbus::can_stm_task(cx);
     }
 
+    #[task(local = [mr], shared = [can_mcp_tx, can_stm_tx, ])]
+    fn button_task(_cx: button_task::Context) {
+        #[cfg(feature = "module-button")]
+        module::button::button_task(_cx);
+    }
+
     extern "Rust" {
         #[task(shared = [blinker], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
@@ -387,9 +391,6 @@ mod app {
             ]
         )]
         fn health_check_task(mut cx: health_check_task::Context);
-
-        #[task(local = [mr], shared = [can_mcp_tx, can_stm_tx, ])]
-        fn button_task(cx: button_task::Context);
 
         #[task(shared = [can_mcp_rx, can_stm_rx])]
         fn can_rx_router(_cx: can_rx_router::Context);

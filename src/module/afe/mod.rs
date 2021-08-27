@@ -1,4 +1,4 @@
-use crate::app;
+use crate::prelude::*;
 use rtic::Mutex;
 // #[cfg(feature = "module-afe-hx711")]
 // mod hx711_uses {
@@ -9,7 +9,6 @@ use rtic::Mutex;
     use tim_systick_monotonic::MonotonicHandle;
     use embedded_hal::digital::v2::OutputPin;
     use nb::block;
-use uavcan_llr::types::{CanId, NodeId, SubjectId, Priority, TransferId};
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
 
 pub type Hx711Rate = PA8<Output<PushPull>>;
@@ -94,11 +93,11 @@ pub fn idle(mut cx: app::idle::Context) -> ! {
         let thrust = nb::block!(hx711.retrieve()).unwrap() - thrust_0;
         log_info!("thrust: {}\ttorque: {}\t{}\t{}", thrust, torque, skip_1, skip_2);
 
-        let id = CanId::new_message_kind(NodeId::new(2).unwrap(), SubjectId::new(20).unwrap(), false, Priority::Nominal);
+        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(20).unwrap(), false, Priority::Nominal);
         let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&torque.to_be_bytes()).unwrap(), id, &mut cx.local.state.torque_transfer_id);
         can_send!(cx, frame);
 
-        let id = CanId::new_message_kind(NodeId::new(2).unwrap(), SubjectId::new(21).unwrap(), false, Priority::Nominal);
+        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(21).unwrap(), false, Priority::Nominal);
         let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&thrust.to_be_bytes()).unwrap(), id, &mut cx.local.state.thrust_transfer_id);
         can_send!(cx, frame);
     }
