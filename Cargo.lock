@@ -212,7 +212,6 @@ checksum = "812b30ff14930407c86a23e256ac050b8e6913f597adcc88e29d40517f7a16de"
 [[package]]
 name = "drv8323"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/drv8323-rs.git#8c8ecf3a4113e1d95cf7a1047ab0b02576d5e020"
 dependencies = [
  "embedded-hal",
 ]
@@ -623,7 +622,6 @@ dependencies = [
 [[package]]
 name = "stm32f0xx-hal"
 version = "0.17.1"
-source = "git+https://github.com/romixlab/stm32f0xx-hal.git#8c8c9beba8824153e6b56d12ea062f075eee15d5"
 dependencies = [
  "bare-metal 1.0.0",
  "bxcan",
