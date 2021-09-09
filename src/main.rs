@@ -35,6 +35,7 @@ mod app {
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
     use crate::task::blink::Blinker;
     use crate::task::health_check::health_check_task;
+    use crate::canbus::can_rx_router;
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
@@ -309,12 +310,6 @@ mod app {
     //     test_task::spawn_after(Milliseconds::new(500u32)).ok();
     // }
 
-
-    #[task(shared = [can_mcp_rx, can_stm_rx])]
-    fn can_rx_router(_cx: can_rx_router::Context) {
-
-    }
-
     #[task(binds = EXTI4_15, shared = [can_mcp_tx, can_mcp_rx], local = [can_mcp25625, mcp_irq])]
     #[allow(unused_mut)]
     fn exti_4_15(mut cx: exti_4_15::Context) {
@@ -357,6 +352,7 @@ mod app {
         )]
         fn health_check_task(mut cx: health_check_task::Context);
 
-
+        #[task(shared = [can_mcp_rx, can_stm_rx])]
+        fn can_rx_router(_cx: can_rx_router::Context);
     }
 }

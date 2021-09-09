@@ -368,7 +368,7 @@ version = "0.1.0"
 dependencies = [
  "cortex-m 0.6.7",
  "embedded-hal",
- "vhrdcan",
+ "vhrdcan 0.1.0",
 ]
 
 [[package]]
@@ -664,7 +664,7 @@ name = "uavcan-llr"
 version = "0.1.0"
 dependencies = [
  "crc-any",
- "vhrdcan",
+ "vhrdcan 0.1.0 (git+https://github.com/vhrdtech/vhrdcan.git)",
 ]
 
 [[package]]
@@ -721,12 +721,22 @@ dependencies = [
  "tim-systick-monotonic",
  "uavcan-llr",
  "vhrd-module-nvconfig",
- "vhrdcan",
+ "vhrdcan 0.1.0",
 ]
 
 [[package]]
 name = "vhrdcan"
 version = "0.1.0"
+dependencies = [
+ "hash32 0.1.1",
+ "hash32-derive",
+ "heapless 0.7.3",
+]
+
+[[package]]
+name = "vhrdcan"
+version = "0.1.0"
+source = "git+https://github.com/vhrdtech/vhrdcan.git#e40bd6a463f03fc48b3ca070e263f2b7cc8529fa"
 dependencies = [
  "hash32 0.1.1",
  "hash32-derive",

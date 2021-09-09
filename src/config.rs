@@ -6,6 +6,8 @@ pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
 
 pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
+pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
+
 // CAN Bus
 use heapless::binary_heap::{BinaryHeap, Min};
 use vhrdcan::frame::Frame;
@@ -50,5 +52,7 @@ pub mod can_stm_config {
 }
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
+use uavcan_llr::types::ServiceId;
+
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();

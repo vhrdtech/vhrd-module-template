@@ -1,4 +1,4 @@
-use crate::{config, hal};
+use crate::{config, hal, app};
 use rtic::Mutex;
 
 macro_rules! can_send {
@@ -13,6 +13,41 @@ macro_rules! can_send {
         #[cfg(feature = "can-stm")]
         rtic::pend(crate::pac::Interrupt::CEC_CAN);
     };
+}
+
+pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
+    let uavcan_node_id = NVConfig::get().board_config.uavcan_node_id;
+    loop {
+        #[cfg(feature = "can-mcp25625")]
+        let frame: Option<Frame<8>> = cx.shared.can_mcp_rx.lock(|rx| rx.pop());
+        #[cfg(feature = "can-stm")]
+        let frame: Option<Frame<8>> = cx.shared.can_stm_rx.lock(|rx| rx.pop());
+
+        match frame {
+            Some(frame) => {
+                match CanId::try_from(frame.id) {
+                    Ok(uavcan_id) => {
+                        match uavcan_id.transfer_kind {
+                            TransferKind::Message(_) => {}
+                            TransferKind::Service(service) => {
+                                if service.destination_node_id.inner() != uavcan_node_id {
+                                    continue;
+                                }
+                                if service.service_id == config::REBOOT_SERVICE_ID {
+                                    log_debug!("Reset requested");
+                                    cortex_m::peripheral::SCB::sys_reset();
+                                }
+                            }
+                        }
+                    },
+                    Err(_) => {}
+                }
+            },
+            None => {
+                return;
+            }
+        }
+    }
 }
 
 #[cfg(feature = "can-mcp25625")]
@@ -46,7 +81,7 @@ pub fn can_mcp25625_init(
 
 #[cfg(feature = "can-mcp25625")]
 use mcp25625::{McpErrorKind, FiltersConfig, MCP25625Config, McpOperationMode};
-use vhrdcan::FrameId;
+use vhrdcan::{FrameId, Frame};
 
 #[cfg(feature = "can-mcp25625")]
 fn mcp25625_configure(mcp25625: &mut config::Mcp25625Instance) -> Result<(), McpErrorKind> {
@@ -204,6 +239,9 @@ pub fn can_stm_init(
 
 #[cfg(feature = "can-stm")]
 use hal::can::bxcan::Frame as BxFrame;
+use uavcan_llr::types::{CanId, TransferKind};
+use core::convert::TryFrom;
+use vhrd_module_nvconfig::NVConfig;
 
 pub struct CanStmState {
     #[cfg(feature = "can-stm")]
@@ -222,7 +260,6 @@ impl CanStmState {
 pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
     // log_debug!("can_irq");
     use hal::can::bxcan::Data as BxData;
-    use vhrdcan::Frame;
 
     let can: &mut config::CanStmInstance = cx.local.can_stm;
     can.clear_wakeup_interrupt();
@@ -230,6 +267,7 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
     //     let dp = hal::pac::Peripherals::steal();
     //     log_debug!("msr:{:032b}", dp.CAN.msr.read().bits());
     // }
+    let mut new_frames = false;
     for _ in 0..=1 {
         match can.receive() {
             Ok(frame) => {
@@ -239,7 +277,7 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
                     log_debug_if_cps!("RX: {:?}", frame);
                     match cx.shared.can_stm_rx.lock(|rx| rx.push(frame)) {
                         Ok(_) => {
-
+                            new_frames = true;
                         }
                         Err(_) => {
 
@@ -251,6 +289,9 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
                 // log_debug_if_cps!("RX err");
             }
         }
+    }
+    if new_frames {
+        crate::app::can_rx_router::spawn().ok();
     }
 
     cx.local.state.pushed_out = match &cx.local.state.pushed_out {
