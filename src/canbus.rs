@@ -112,6 +112,7 @@ fn mcp25625_configure(mcp25625: &mut config::Mcp25625Instance) -> Result<(), Mcp
     };
     mcp25625.apply_config(mcp_config)?;
     mcp25625.enable_interrupts(0b0001_1111);
+    mcp25625.clkout_mode(mcp25625::ClkOutMode::SystemClock);
     Ok(())
 }
 
@@ -331,8 +332,8 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
                             }
                         }
                     }
-                    Err(_) => {
-                        unreachable!();
+                    Err(_e) => {
+                        log_debug_if_cps!("TX error: {:?}", _e);
                     }
                 }
             }
@@ -347,8 +348,8 @@ pub fn can_stm_task(mut cx: crate::app::can_stm_task::Context) {
 fn vhrdcanid2bxcanid(id: FrameId) -> crate::hal::can::bxcan::Id {
     use hal::can::bxcan::{Id, StandardId, ExtendedId};
     match id {
-        FrameId::Standard(sid) => { Id::Standard(StandardId::new(sid.id()).unwrap()) }
-        FrameId::Extended(eid) => { Id::Extended(ExtendedId::new(eid.id()).unwrap()) }
+        FrameId::Standard(sid) => { Id::Standard(StandardId::new(sid.inner()).unwrap()) }
+        FrameId::Extended(eid) => { Id::Extended(ExtendedId::new(eid.inner()).unwrap()) }
     }
 }
 

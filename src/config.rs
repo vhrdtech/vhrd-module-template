@@ -8,6 +8,16 @@ pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
 pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
 
+
+#[cfg(feature = "module-pi")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(5).unwrap();
+#[cfg(feature = "module-led")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(4).unwrap();
+#[cfg(feature = "module-button")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
+#[cfg(feature = "module-afe")]
+pub const UAVCAN_NODE_ID: NodeId = NodeId::new(2).unwrap();
+
 // CAN Bus
 use heapless::binary_heap::{BinaryHeap, Min};
 use vhrdcan::frame::Frame;
@@ -29,7 +39,7 @@ pub mod mcp25625_config {
     pub type Mcp25625Mosi = PB5<Alternate<AF0>>;
     pub type Mcp25625Cs = PC14<Output<PushPull>>;
     pub type Mcp25625Spi = SPI1;
-    pub type Mcp25625Instance = mcp25625::MCP25625<Spi<Mcp25625Spi, Mcp25625Sck, Mcp25625Miso, Mcp25625Mosi>, Mcp25625Cs>;
+    pub type Mcp25625Instance = mcp25625::MCP25625<Spi<Mcp25625Spi, Mcp25625Sck, Mcp25625Miso, Mcp25625Mosi, hal::spi::EightBit>, Mcp25625Cs>;
     pub type Mcp25625Irq = PC15<Input<PullUp>>;
     pub const MCP25625_IRQ_HANDLER: Interrupt = Interrupt::EXTI4_15;
 }
@@ -52,7 +62,7 @@ pub mod can_stm_config {
 }
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
-use uavcan_llr::types::ServiceId;
+use uavcan_llr::types::NodeId;
 
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();

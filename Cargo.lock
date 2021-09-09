@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "aligned"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c19796bd8d477f1a9d4ac2465b464a8b1359474f06a96bb3cda650b4fca309bf"
+checksum = "3a785a543aea40f5e4e2e93bb2655d31bc21bb391fff65697150973e383f16bb"
 dependencies = [
  "as-slice",
 ]
@@ -25,9 +25,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-polyfill"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30302dda7a66f8c55932ebf208f7def840743ff64d495e9ceffcd97c18f11d39"
+checksum = "4a93ba5d6053837dbb76fd0ae26fd4f0c1859a008a783b0ce072b797c07f0f27"
 dependencies = [
  "cortex-m 0.7.3",
 ]
@@ -61,9 +61,9 @@ checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
 
 [[package]]
 name = "bitflags"
-version = "1.2.1"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bxcan"
@@ -126,9 +126,9 @@ dependencies = [
 
 [[package]]
 name = "cortex-m-rt"
-version = "0.6.14"
+version = "0.6.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6d8353767db816419630a76d5f1ad5b09610d22b67ceb59647df6a8abc667f8"
+checksum = "454f278bf469e2de0a4d22ea019d169d8944f86957c8207a39e3f66c32be2fc6"
 dependencies = [
  "cortex-m-rt-macros",
  "r0",
@@ -136,9 +136,9 @@ dependencies = [
 
 [[package]]
 name = "cortex-m-rt-macros"
-version = "0.1.8"
+version = "0.6.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4717562afbba06e760d34451919f5c3bf3ac15c7bb897e8b04862a7428378647"
+checksum = "c8e3aa52243e26f5922fa522b0814019e0c98fc567e2756d715dce7ad7a81f49"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -227,9 +227,9 @@ dependencies = [
 
 [[package]]
 name = "embedded-hal"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db184d3fa27bc7a2344250394c0264144dfe0bc81a4401801dcb964b8dd172ad"
+checksum = "e36cfb62ff156596c892272f3015ef952fe1525e85261fa3a7f327bd6b384ab9"
 dependencies = [
  "nb 0.1.3",
  "void",
@@ -333,9 +333,9 @@ dependencies = [
 
 [[package]]
 name = "heapless"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34e26526e7168021f34243a3c8faac4dc4f938cde75a0f9b8e373cca5eb4e7ce"
+checksum = "50530280e9a947b192e3a30a9d7bcead527b22da30ff7cbd334233d820aaf82a"
 dependencies = [
  "atomic-polyfill",
  "hash32 0.2.1",
@@ -365,6 +365,7 @@ dependencies = [
 [[package]]
 name = "mcp25625"
 version = "0.1.0"
+source = "git+https://github.com/romixlab/mcp25625.git#5263f6be2b3d7f8cf7a853fe851595627c8000a7"
 dependencies = [
  "cortex-m 0.6.7",
  "embedded-hal",
@@ -484,9 +485,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
@@ -558,7 +559,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
- "semver 1.0.3",
+ "semver 1.0.4",
 ]
 
 [[package]]
@@ -581,9 +582,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f3aac57ee7f3272d8395c6e4f502f434f0e289fcd62876f70daa008c20dcabe"
+checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
 
 [[package]]
 name = "semver-parser"
@@ -634,9 +635,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.73"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f71489ff30030d2ae598524f61326b902466f72a0fb1a8564c001cc63425bcc7"
+checksum = "b7f58f7e8eaa0009c5fec437aabf511bd9933e4b2d7407bd05273c01a8906ea7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -646,6 +647,7 @@ dependencies = [
 [[package]]
 name = "tim-systick-monotonic"
 version = "0.1.0"
+source = "git+https://github.com/romixlab/tim-systick-monotonic.git#a2993fe77aba75add90d8a43a9ccca4c54c1e917"
 dependencies = [
  "cortex-m 0.7.3",
  "embedded-hal",
@@ -662,6 +664,7 @@ checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
 [[package]]
 name = "uavcan-llr"
 version = "0.1.0"
+source = "git+https://github.com/vhrdtech/uavcan-llr.git#84a1de90742a967274720ca9b0bc4fcd77e44fb9"
 dependencies = [
  "crc-any",
  "vhrdcan 0.1.0 (git+https://github.com/vhrdtech/vhrdcan.git)",
@@ -700,6 +703,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 [[package]]
 name = "vhrd-module-nvconfig"
 version = "0.1.0"
+source = "git+https://github.com/vhrdtech/vhrd-module-nvconfig.git#5ccafea36f8b35a8b365b6fac53bcb40e72e0ec7"
 
 [[package]]
 name = "vhrd-module-template"
@@ -712,7 +716,7 @@ dependencies = [
  "drv8323",
  "embedded-hal",
  "embedded-time",
- "heapless 0.7.3",
+ "heapless 0.7.5",
  "hx711",
  "mcp25625",
  "nb 1.0.0",
@@ -727,10 +731,11 @@ dependencies = [
 [[package]]
 name = "vhrdcan"
 version = "0.1.0"
+source = "git+https://github.com/vhrdtech/vhrdcan.git#e40bd6a463f03fc48b3ca070e263f2b7cc8529fa"
 dependencies = [
  "hash32 0.1.1",
  "hash32-derive",
- "heapless 0.7.3",
+ "heapless 0.7.5",
 ]
 
 [[package]]
@@ -751,9 +756,9 @@ checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "volatile-register"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d67cb4616d99b940db1d6bd28844ff97108b498a6ca850e5b6191a532063286"
+checksum = "9ee8f19f9d74293faf70901bc20ad067dc1ad390d2cbf1e3f75f721ffee908b6"
 dependencies = [
  "vcell",
 ]
