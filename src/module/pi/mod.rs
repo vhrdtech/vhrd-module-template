@@ -13,7 +13,7 @@ pub fn init(pi_en: PB0<Input<Floating>>) -> Resources {
             pi_en.into_push_pull_output(cs),
         )
     });
-    // pi_en.set_high().ok();
+    pi_en.set_high().ok();
 
     Resources {
 

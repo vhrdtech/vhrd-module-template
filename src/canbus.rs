@@ -16,7 +16,6 @@ macro_rules! can_send {
 }
 
 pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
-    let uavcan_node_id = NVConfig::get().board_config.uavcan_node_id;
     loop {
         #[cfg(feature = "can-mcp25625")]
         let frame: Option<Frame<8>> = cx.shared.can_mcp_rx.lock(|rx| rx.pop());
@@ -30,7 +29,7 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                         match uavcan_id.transfer_kind {
                             TransferKind::Message(_) => {}
                             TransferKind::Service(service) => {
-                                if service.destination_node_id.inner() != uavcan_node_id {
+                                if service.destination_node_id != config::UAVCAN_NODE_ID {
                                     continue;
                                 }
                                 if service.service_id == config::REBOOT_SERVICE_ID {
@@ -242,7 +241,7 @@ pub fn can_stm_init(
 use hal::can::bxcan::Frame as BxFrame;
 use uavcan_llr::types::{CanId, TransferKind};
 use core::convert::TryFrom;
-use vhrd_module_nvconfig::NVConfig;
+// use vhrd_module_nvconfig::NVConfig;
 
 pub struct CanStmState {
     #[cfg(feature = "can-stm")]

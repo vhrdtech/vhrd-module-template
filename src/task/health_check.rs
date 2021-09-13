@@ -3,7 +3,6 @@ use rtic::Mutex;
 use rtic::rtic_monotonic::Milliseconds;
 use uavcan_llr::types::{TransferId, CanId, NodeId, SubjectId, Priority};
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
-use vhrd_module_nvconfig::NVConfig;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Health {
@@ -50,8 +49,7 @@ pub fn health_check_task(mut cx: crate::app::health_check_task::Context) {
     let mode = Mode::Firmware;
     payload[4] = cx.shared.health.lock(|h| (*h as u8) | ((mode as u8) << 3));
 
-    let uavcan_node_id = unsafe { NodeId::new_unchecked(NVConfig::get().board_config.uavcan_node_id) };
-    let id = CanId::new_message_kind(uavcan_node_id, SubjectId::new(10).unwrap(), false, Priority::Nominal);
+    let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(10).unwrap(), false, Priority::Nominal);
     let frame = Slicer::<8>::new_single(OwnedSlice::new(payload, 5), id, &mut cx.local.state.transfer_id);
     can_send!(cx, frame);
 

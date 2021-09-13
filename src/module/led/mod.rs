@@ -35,9 +35,12 @@ pub fn init(
         embedded_hal::spi::MODE_1,
         10.khz(),
         rcc
-    );
+    ).into_16bit_width();
     let drv8323 = match DRV8323::new(drv_spi, drv_cs, drv_en, drv_cal, drv_nfault, DummyDelay {}) {
-        Ok(drv8323) => Some(drv8323),
+        Ok(drv8323) => {
+            log_info!("DRV8323 init ok");
+            Some(drv8323)
+        },
         Err(e) => {
             log_error!("DRV8323 init fail: {:?}", e);
             None

@@ -62,7 +62,7 @@ pub mod can_stm_config {
 }
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
-use uavcan_llr::types::NodeId;
+use uavcan_llr::types::{NodeId, ServiceId};
 
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();
