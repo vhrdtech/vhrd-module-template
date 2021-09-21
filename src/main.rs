@@ -36,10 +36,13 @@ mod app {
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
     use crate::task::blink::Blinker;
     use crate::task::health_check::health_check_task;
-    use crate::module::can_rx_router;
+    // use crate::module::can_rx_router;
+    use crate::canbus::can_rx_router;
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
+
+    use module::led::animation_task;
 
     #[shared]
     struct Shared {
@@ -55,6 +58,9 @@ mod app {
         blinker: Blinker,
         uptime: u32,
         health: crate::task::health_check::Health,
+
+        #[cfg(feature = "module-led")]
+        drv8323: Option<module::led::Drv8323Instance>,
     }
 
     #[local]
@@ -127,7 +133,7 @@ mod app {
             led,
             pa7,
 
-            pa8, pa10,
+            pa8, pa9, pa10,
 
             can_rx,
             can_tx,
@@ -151,7 +157,7 @@ mod app {
                 gpioa.pa6,
                 gpioa.pa7,
 
-                gpioa.pa8, gpioa.pa10,
+                gpioa.pa8, gpioa.pa9, gpioa.pa10,
 
                 gpioa.pa11.into_alternate_af4(cs),
                 gpioa.pa12.into_alternate_af4(cs),
@@ -221,7 +227,10 @@ mod app {
         button_task::spawn().ok();
 
         #[cfg(feature = "module-led")]
-        let _mr = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12, dp.SPI2, &mut rcc);
+        let drv8323 = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12,  pa8, pa9, pa10,dp.SPI2, &mut rcc);
+        #[cfg(feature = "module-led")]
+        animation_task::spawn().ok();
+
         #[cfg(feature = "module-pi")]
         let _mr = crate::module::pi::init(pb0);
         #[cfg(feature = "module-afe-hx711")]
@@ -245,6 +254,9 @@ mod app {
                 blinker,
                 uptime: 0,
                 health: crate::task::health_check::Health::Norminal,
+
+                #[cfg(feature = "module-led")]
+                drv8323,
             },
             Local{
                 #[cfg(feature = "can-mcp25625")]
@@ -394,5 +406,8 @@ mod app {
 
         #[task(shared = [can_mcp_rx, can_stm_rx])]
         fn can_rx_router(_cx: can_rx_router::Context);
+
+        #[task(shared = [drv8323])]
+        fn animation_task(cx: animation_task::Context);
     }
 }
