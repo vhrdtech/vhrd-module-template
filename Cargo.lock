@@ -212,6 +212,7 @@ checksum = "812b30ff14930407c86a23e256ac050b8e6913f597adcc88e29d40517f7a16de"
 [[package]]
 name = "drv8323"
 version = "0.1.0"
+source = "git+https://github.com/romixlab/drv8323-rs.git#f7d2688045ee2891441e7eb1fc990f5f9208d124"
 dependencies = [
  "embedded-hal",
 ]
@@ -648,7 +649,7 @@ dependencies = [
 [[package]]
 name = "tim-systick-monotonic"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/tim-systick-monotonic.git#a2993fe77aba75add90d8a43a9ccca4c54c1e917"
+source = "git+https://github.com/romixlab/tim-systick-monotonic.git#5813a9478a6fbc759c5eeef48b7ae5b161293167"
 dependencies = [
  "cortex-m 0.7.3",
  "embedded-hal",

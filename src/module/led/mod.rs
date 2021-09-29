@@ -6,12 +6,14 @@ use hal::gpio::{
     gpiob::{PB12, PB13, PB14, PB15, PB7, PB8, PB9},
     Floating, Input,
 };
-use stm32f0xx_hal::gpio::gpioa::{PA10, PA8, PA9};
+use stm32f0xx_hal::gpio::gpioa::{PA10, PA8, PA9, PA4};
 use stm32f0xx_hal::gpio::{Alternate, Output, PushPull, AF0};
 use stm32f0xx_hal::spi::{SixteenBit, Spi};
 use stm32f0xx_hal::time::U32Ext;
 use drv8323::registers::DrvRegister;
 use embedded_time::duration::Milliseconds;
+use stm32f0xx_hal::gpio::gpiob::PB2;
+use embedded_hal::digital::v2::OutputPin;
 
 pub type Drv8323Instance = DRV8323<
     Spi<SPI2, PB13<Alternate<AF0>>, PB14<Alternate<AF0>>, PB15<Alternate<AF0>>, SixteenBit>,
@@ -32,13 +34,28 @@ pub fn init(
     drv_nfault: PB12<Input<Floating>>,
 
     ha: PA8<Input<Floating>>,
+    la_hiz: PB2<Input<Floating>>,
     hb: PA9<Input<Floating>>,
+    lb_hiz: PA4<Input<Floating>>,
     hc: PA10<Input<Floating>>,
 
     spi2: hal::pac::SPI2,
     rcc: &mut hal::rcc::Rcc,
 ) -> (Option<Drv8323Instance>) {
-    let (drv_sck, drv_miso, drv_mosi, drv_cs, drv_en, drv_cal, drv_nfault, ha, hb, hc) =
+    let (
+        drv_sck,
+        drv_miso,
+        drv_mosi,
+        drv_cs,
+        drv_en,
+        drv_cal,
+        drv_nfault,
+        mut ha,
+        mut la_hiz,
+        mut hb,
+        mut lb_hiz,
+        hc
+    ) =
         cortex_m::interrupt::free(|cs| {
             (
                 drv_sck.into_alternate_af0(cs),
@@ -48,11 +65,19 @@ pub fn init(
                 drv_en.into_push_pull_output(cs),
                 drv_cal.into_push_pull_output(cs),
                 drv_nfault.into_floating_input(cs),
-                ha.into_alternate_af2(cs),
-                hb.into_alternate_af2(cs),
+                // ha.into_alternate_af2(cs),
+                ha.into_push_pull_output(cs),
+                la_hiz.into_push_pull_output(cs),
+                // hb.into_alternate_af2(cs),
+                hb.into_push_pull_output(cs),
+                lb_hiz.into_push_pull_output(cs),
                 hc.into_alternate_af2(cs),
             )
         });
+    la_hiz.set_low().ok();
+    ha.set_high().ok();
+
+    lb_hiz.set_low().ok(); // low = hi-z
     let drv_spi = hal::spi::Spi::spi2(
         spi2,
         (drv_sck, drv_miso, drv_mosi),
@@ -75,8 +100,8 @@ pub fn init(
     };
     log_info!("Init TIM1");
 
-    init_tim1(rcc.clocks.sysclk(), 20.khz().into());
-    tim1_set_duty(50);
+    // init_tim1(rcc.clocks.sysclk(), 20.khz().into());
+    // tim1_set_duty(50);
 
     (drv8323)
 }
@@ -130,7 +155,14 @@ impl embedded_hal::blocking::delay::DelayUs<u32> for DummyDelay {
     }
 }
 
-pub fn can_rx_router(_cx: app::can_rx_router::Context) {}
+pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
+
+}
+
+pub fn handle_service_request(source: NodeId, service: Service, payload: &[u8]) {
+
+}
+
 
 fn init_tim1(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::time::Hertz) {
     let dp = unsafe { crate::hal::pac::Peripherals::steal() };

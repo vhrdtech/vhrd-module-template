@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run [pi, f072]" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="+nightly run --release --features=&quot;module-pi, f072c8u, can-stm, can-printstat, log-text-rtt, log-level-debug&quot; --color=always" />
+    <option name="command" value="+nightly run --release --features=&quot;module-pi, f072c8u, can-stm, log-text-rtt, log-level-debug&quot; --color=always" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

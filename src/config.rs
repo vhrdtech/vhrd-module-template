@@ -7,6 +7,8 @@ pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
 pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
 pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
+#[cfg(feature = "module-pi")]
+pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(10).unwrap();
 
 
 #[cfg(feature = "module-pi")]
@@ -17,6 +19,7 @@ pub const UAVCAN_NODE_ID: NodeId = NodeId::new(4).unwrap();
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
 #[cfg(feature = "module-afe")]
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(2).unwrap();
+pub const PI_NODE_ID: NodeId = NodeId::new(10).unwrap();
 
 // CAN Bus
 use heapless::binary_heap::{BinaryHeap, Min};
@@ -63,6 +66,8 @@ pub mod can_stm_config {
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
 use uavcan_llr::types::{NodeId, ServiceId};
+use crate::prelude::{Message, SubjectId};
+use heapless::pool::Node;
 
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();

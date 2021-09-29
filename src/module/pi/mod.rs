@@ -2,6 +2,7 @@ use stm32f0xx_hal::gpio::{Floating, Input};
 use stm32f0xx_hal::gpio::gpiob::PB0;
 use embedded_hal::digital::v2::OutputPin;
 use crate::prelude::*;
+use crate::app;
 
 pub struct Resources {
 
@@ -26,8 +27,28 @@ pub fn idle(_cx: app::idle::Context) -> ! {
     }
 }
 
-pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
-    while let Some(frame) = cx.shared.can_stm_rx.lock(|can_rx| can_rx.pop()) {
-        log_debug!("rx_router: {:?}", frame);
+use core::convert::AsMut;
+use crate::ramp_generator::Event;
+
+fn clone_into_array<A, T>(slice: &[T]) -> A
+    where A: Sized + Default + AsMut<[T]>,
+          T: Clone
+{
+    let mut a = Default::default();
+    <A as AsMut<[T]>>::as_mut(&mut a).clone_from_slice(slice);
+    a
+}
+
+pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
+    if source == config::PI_NODE_ID && message.subject_id == config::RMP_RAMP_TARGET_SUBJECT_ID {
+        if payload.len() < 4 {
+            return;
+        }
+        let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
+        app::ramp_generator::spawn(Event::SetRpmTarget(rpm)).ok();
     }
+}
+
+pub fn handle_service_request(_source: NodeId, service: Service, payload: &[u8]) {
+
 }

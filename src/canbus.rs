@@ -27,7 +27,13 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                 match CanId::try_from(frame.id) {
                     Ok(uavcan_id) => {
                         match uavcan_id.transfer_kind {
-                            TransferKind::Message(_) => {}
+                            TransferKind::Message(message) => {
+                                if false {
+
+                                } else {
+                                    crate::module::handle_message(uavcan_id.source_node_id, message, frame.data());
+                                }
+                            }
                             TransferKind::Service(service) => {
                                 if service.destination_node_id != config::UAVCAN_NODE_ID {
                                     continue;
@@ -35,6 +41,8 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                                 if service.service_id == config::REBOOT_SERVICE_ID {
                                     log_debug!("Reset requested");
                                     cortex_m::peripheral::SCB::sys_reset();
+                                } else {
+                                    crate::module::handle_service_request(uavcan_id.source_node_id, service, frame.data());
                                 }
                             }
                         }

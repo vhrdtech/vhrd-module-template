@@ -24,8 +24,11 @@ uavcan-llr = { features = ["vhrdcan"], git = "https://github.com/vhrdtech/uavcan
 hx711 = { version = "0.6.0", optional = true }
 drv8323 = { git = "https://github.com/romixlab/drv8323-rs.git", optional = true }
 
-[patch."https://github.com/romixlab/drv8323-rs.git"]
-drv8323 = { path = "../drv8323-rs" }
+#[patch."https://github.com/romixlab/drv8323-rs.git"]
+#drv8323 = { path = "../drv8323-rs" }
+
+#[patch."https://github.com/romixlab/tim-systick-monotonic.git"]
+#tim-systick-monotonic = { path = "../tim-systick-monotonic" }
 
 #[patch."https://github.com/romixlab/stm32f0xx-hal.git"]
 #stm32f0xx-hal = { path = "../stm32f0xx-hal" }

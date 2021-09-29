@@ -17,6 +17,9 @@ mod units;
 mod module;
 mod task;
 mod prelude;
+mod ramp_generator;
+
+pub type TimMono = tim_systick_monotonic::TimSystickMonotonic<8_000_000>;
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC, FLASH])]
 mod app {
@@ -41,8 +44,6 @@ mod app {
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
-
-    use module::led::animation_task;
 
     #[shared]
     struct Shared {
@@ -82,7 +83,7 @@ mod app {
     }
 
     #[monotonic(binds = SysTick, default = true)]
-    type MyMono = TimSystickMonotonic<8_000_000>;
+    type TimMono = crate::TimMono;
 
     #[init]
     fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
@@ -129,6 +130,7 @@ mod app {
         let gpioc = dp.GPIOC.split(&mut rcc);
         #[allow(unused_variables)]
         let (
+            pa4,
             pa5,
             led,
             pa7,
@@ -153,6 +155,7 @@ mod app {
 
         ) = cortex_m::interrupt::free(|cs| {
             (
+                gpioa.pa4,
                 gpioa.pa5,
                 gpioa.pa6,
                 gpioa.pa7,
@@ -227,7 +230,7 @@ mod app {
         button_task::spawn().ok();
 
         #[cfg(feature = "module-led")]
-        let drv8323 = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12,  pa8, pa9, pa10,dp.SPI2, &mut rcc);
+        let drv8323 = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12,  pa8, pb2, pa9, pa4, pa10,dp.SPI2, &mut rcc);
         #[cfg(feature = "module-led")]
         animation_task::spawn().ok();
 
@@ -392,6 +395,21 @@ mod app {
         module::button::button_task(_cx);
     }
 
+    #[task(shared = [drv8323])]
+    fn animation_task(_cx: animation_task::Context) {
+        #[cfg(feature = "module-led")]
+        module::led::animation_task(cx);
+    }
+
+
+    #[task(capacity = 2, shared = [drv8323], local = [
+        state: crate::ramp_generator::State = crate::ramp_generator::State::new()
+    ])]
+    fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
+        #[cfg(feature = "module-pi")]
+            crate::ramp_generator::ramp_generator(_cx, _e);
+    }
+
     extern "Rust" {
         #[task(shared = [blinker], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
@@ -407,7 +425,5 @@ mod app {
         #[task(shared = [can_mcp_rx, can_stm_rx])]
         fn can_rx_router(_cx: can_rx_router::Context);
 
-        #[task(shared = [drv8323])]
-        fn animation_task(cx: animation_task::Context);
     }
 }

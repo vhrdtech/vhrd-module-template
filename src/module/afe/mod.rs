@@ -125,6 +125,10 @@ pub fn idle(_cx: app::idle::Context) -> ! {
     }
 }
 
-pub fn can_rx_router(_cx: app::can_rx_router::Context) {
+pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
+
+}
+
+pub fn handle_service_request(source: NodeId, service: Service, payload: &[u8]) {
 
 }
