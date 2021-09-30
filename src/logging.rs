@@ -117,3 +117,19 @@ macro_rules! log_error {
 macro_rules! log_error {
     ($($arg:tt)*) => {}
 }
+
+macro_rules! count_result {
+    ($expr:expr) => {
+        let file = file!();
+        let line = line!();
+        let column = column!();
+        match $expr {
+            Ok(_) => {
+                log_debug!("count: ok: {}:{}:{}", file, line, column);
+            },
+            Err(_) => {
+                log_error!("count: err: {}:{}:{}", file, line, column);
+            }
+        }
+    }
+}

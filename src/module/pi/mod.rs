@@ -45,7 +45,7 @@ pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
             return;
         }
         let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
-        app::ramp_generator::spawn(Event::SetRpmTarget(rpm)).ok();
+        count_result!(app::ramp_generator::spawn(Event::SetRpmTarget(rpm)));
     }
 }
 
