@@ -39,7 +39,8 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                                     continue;
                                 }
                                 if service.service_id == config::REBOOT_SERVICE_ID {
-                                    log_debug!("Reset requested");
+                                    log_debug!("Reset requested from: {}", uavcan_id.source_node_id);
+                                    cortex_m::asm::delay(10_000); // Minimum seems to be 3_000 @ 8MHz and JLink 255
                                     cortex_m::peripheral::SCB::sys_reset();
                                 } else {
                                     crate::module::handle_service_request(uavcan_id.source_node_id, service, frame.data());

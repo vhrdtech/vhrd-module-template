@@ -398,7 +398,7 @@ mod app {
     #[task(shared = [drv8323])]
     fn animation_task(_cx: animation_task::Context) {
         #[cfg(feature = "module-led")]
-        module::led::animation_task(cx);
+        module::led::animation_task(_cx);
     }
 
 

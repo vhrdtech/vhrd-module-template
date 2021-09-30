@@ -8,9 +8,9 @@ pub use pi::handle_service_request;
 #[cfg(feature = "module-led")]
 pub mod led;
 #[cfg(feature = "module-led")]
-pub use pi::handle_message;
+pub use led::handle_message;
 #[cfg(feature = "module-led")]
-pub use pi::handle_service_request;
+pub use led::handle_service_request;
 #[cfg(not(feature = "module-led"))]
 pub mod led {
     pub type Drv8323Instance = ();
@@ -23,15 +23,13 @@ pub mod button {
     pub type Resources = ();
 }
 #[cfg(feature = "module-button")]
-pub use pi::handle_message;
+pub use button::handle_message;
 #[cfg(feature = "module-button")]
-pub use pi::handle_service_request;
+pub use button::handle_service_request;
 
 #[cfg(feature = "module-afe")]
 pub mod afe;
 #[cfg(feature = "module-afe")]
-pub use afe::can_rx_router;
+pub use afe::handle_message;
 #[cfg(feature = "module-afe")]
-pub use pi::handle_message;
-#[cfg(feature = "module-afe")]
-pub use pi::handle_service_request;
+pub use afe::handle_service_request;
