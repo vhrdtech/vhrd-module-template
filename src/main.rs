@@ -7,6 +7,9 @@ use stm32f0xx_hal as hal;
 use stm32f0xx_hal::stm32 as pac;
 
 #[macro_use]
+extern crate static_assertions;
+
+#[macro_use]
 mod logging;
 #[macro_use]
 mod canbus;
@@ -80,6 +83,9 @@ mod app {
 
         #[cfg(feature = "module-button")]
         mr: module::button::Resources,
+
+        #[cfg(feature = "module-pi")]
+        pi_en: module::pi::PiEn,
     }
 
     #[monotonic(binds = SysTick, default = true)]
@@ -225,7 +231,7 @@ mod app {
         // test_task2::spawn().ok();
 
         #[cfg(feature = "module-button")]
-        let mr = crate::module::button::init(pb0, pb1, pb2, pb12, pa5, pa7, pa8);
+        let mr = crate::module::button::init(pb0, pb1, pb2, pb12, pa5, pa7, pa8, dp.TIM14, &rcc);
         #[cfg(feature = "module-button")]
         button_task::spawn().ok();
 
@@ -235,7 +241,7 @@ mod app {
         animation_task::spawn().ok();
 
         #[cfg(feature = "module-pi")]
-        let _mr = crate::module::pi::init(pb0);
+        let pi_en = crate::module::pi::init(pb0);
         #[cfg(feature = "module-afe-hx711")]
         let (hx711_rate, hx711) = crate::module::afe::init_hx711(mono.new_handle(),pa8, pb6, pa10, pb7, pb8);
         #[cfg(feature = "module-afe-lmp")]
@@ -261,7 +267,7 @@ mod app {
                 #[cfg(feature = "module-led")]
                 drv8323,
             },
-            Local{
+            Local {
                 #[cfg(feature = "can-mcp25625")]
                 can_mcp25625,
                 #[cfg(feature = "can-mcp25625")]
@@ -276,6 +282,9 @@ mod app {
 
                 #[cfg(feature = "module-button")]
                 mr,
+
+                #[cfg(feature = "module-pi")]
+                pi_en,
 
             },
             init::Monotonics(mono)
@@ -408,6 +417,12 @@ mod app {
     fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
         #[cfg(feature = "module-pi")]
             crate::ramp_generator::ramp_generator(_cx, _e);
+    }
+
+    #[task(capacity = 1, local = [pi_en])]
+    fn pi_task(_cx: pi_task::Context, _e: module::pi::Event) {
+        #[cfg(feature = "module-pi")]
+        crate::module::pi::pi_task(_cx, _e);
     }
 
     extern "Rust" {

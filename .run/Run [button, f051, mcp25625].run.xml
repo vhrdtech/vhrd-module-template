@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run [button, f051, mcp25625]" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="+nightly run --release --features=&quot;module-button, f051c8u, can-mcp25625, can-printstat, log-text-rtt, log-level-debug&quot;  --color=always" />
+    <option name="command" value="+nightly run --release --features=&quot;module-button, f051c8u, can-mcp25625, log-text-rtt, log-level-debug&quot;  --color=always" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />

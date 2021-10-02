@@ -10,13 +10,19 @@ pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
 #[cfg(feature = "module-pi")]
 pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(10).unwrap();
 
+#[cfg(feature = "module-afe")]
+pub const ZERO_AFE: SubjectId = SubjectId::new(11).unwrap();
 
 #[cfg(feature = "module-pi")]
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(5).unwrap();
 #[cfg(feature = "module-led")]
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(4).unwrap();
+
+pub const BUTTON_UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
 #[cfg(feature = "module-button")]
-pub const UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
+pub const UAVCAN_NODE_ID: NodeId = BUTTON_UAVCAN_NODE_ID;
+pub const POWER_BUTTON_SUBJECT: SubjectId = SubjectId::new(20).unwrap();
+
 #[cfg(feature = "module-afe")]
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(2).unwrap();
 pub const PI_NODE_ID: NodeId = NodeId::new(10).unwrap();

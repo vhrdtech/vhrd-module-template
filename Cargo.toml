@@ -23,6 +23,8 @@ uavcan-llr = { features = ["vhrdcan"], git = "https://github.com/vhrdtech/uavcan
 #vhrd-module-nvconfig = { git = "https://github.com/vhrdtech/vhrd-module-nvconfig.git" }
 hx711 = { version = "0.6.0", optional = true }
 drv8323 = { git = "https://github.com/romixlab/drv8323-rs.git", optional = true }
+bare-metal = "0.2.5"
+static_assertions = "1.1.0"
 
 #[patch."https://github.com/romixlab/drv8323-rs.git"]
 #drv8323 = { path = "../drv8323-rs" }

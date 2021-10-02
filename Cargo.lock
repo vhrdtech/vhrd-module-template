@@ -609,6 +609,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "stm32f0"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -709,6 +715,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 name = "vhrd-module-template"
 version = "0.1.0"
 dependencies = [
+ "bare-metal 0.2.5",
  "cfg-if",
  "cortex-m 0.6.7",
  "cortex-m-rt",
@@ -721,6 +728,7 @@ dependencies = [
  "mcp25625",
  "nb 1.0.0",
  "rtt-target",
+ "static_assertions",
  "stm32f0xx-hal",
  "tim-systick-monotonic",
  "uavcan-llr",

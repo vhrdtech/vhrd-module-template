@@ -78,8 +78,14 @@ impl Blinker {
     // }
 
     fn set_duty_raw(&mut self, duty: u16) {
-        let duty = self.global_brightess as u32 * duty as u32 / 100;
-        self.tim.ccr1.write(|w| unsafe { w.ccr1().bits(duty as u16) });
+        let duty_scaled = self.global_brightess as u32 * duty as u32 / 100;
+        self.tim.ccr1.write(|w| unsafe { w.ccr1().bits(duty_scaled as u16) });
+
+        #[cfg(feature = "module-button")] {
+            let dp = unsafe { pac::Peripherals::steal() };
+            let tim14 = dp.TIM14;
+            tim14.ccr1.write(|w| unsafe { w.ccr().bits(duty) });
+        }
     }
 
     pub fn set_global_brigthness_percent(&mut self, brightness: u8) {
