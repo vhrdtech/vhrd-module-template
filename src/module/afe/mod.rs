@@ -10,6 +10,7 @@ use rtic::Mutex;
     use embedded_hal::digital::v2::OutputPin;
     use nb::block;
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
+use core::cell::RefCell;
 
 pub type Hx711Rate = PA8<Output<PushPull>>;
     pub type Hx711Instance = Hx711<DummyDelay, PA10<Input<Floating>>, PB6<Output<PushPull>>>;
@@ -63,13 +64,14 @@ pub fn init_hx711(
     )
 }
 
-#[cfg(feature = "module-afe-hx711")]
-pub fn idle(mut cx: app::idle::Context) -> ! {
-    let hx711: &mut Hx711Instance = cx.local.hx711;
+static REZERO_FLAG: bare_metal::Mutex<RefCell<bool>> = bare_metal::Mutex::new(RefCell::new(false));
 
+fn zero_afe(hx711: &mut Hx711Instance) -> (i32, i32) {
     const N: i32 = 16;
     let mut val: i32 = 0;
     hx711.set_mode(hx711::Mode::ChAGain128).ok();
+    let _skip = block!(hx711.retrieve()).unwrap();
+    let _skip = block!(hx711.retrieve()).unwrap();
     for _ in 0..N {
         val += block!(hx711.retrieve()).unwrap(); // or unwrap, see features below
     }
@@ -78,13 +80,30 @@ pub fn idle(mut cx: app::idle::Context) -> ! {
 
     val = 0;
     hx711.set_mode(hx711::Mode::ChBGain32).ok();
-    let _ = block!(hx711.retrieve());
+    let _skip = block!(hx711.retrieve()).unwrap();
+    let _skip = block!(hx711.retrieve()).unwrap();
     for _ in 0..N {
         val += block!(hx711.retrieve()).unwrap(); // or unwrap, see features below
     }
     let thrust_0 = val / N;
     log_debug!("thrust_0: {}", thrust_0);
+    (torque_0, thrust_0)
+}
+
+#[cfg(feature = "module-afe-hx711")]
+pub fn idle(mut cx: app::idle::Context) -> ! {
+    let hx711: &mut Hx711Instance = cx.local.hx711;
+
+    let (mut torque_0, mut thrust_0) = zero_afe(hx711);
     loop {
+        let rezero = cortex_m::interrupt::free(|cs| REZERO_FLAG.borrow(cs).replace_with(|_| false));
+        if rezero {
+            log_info!("Zero AFE in loop");
+            let zero = zero_afe(hx711);
+            torque_0 = zero.0;
+            thrust_0 = zero.1;
+        }
+
         hx711.set_mode(hx711::Mode::ChAGain128).ok();
         let skip_1 = block!(hx711.retrieve()).unwrap();
         let torque = nb::block!(hx711.retrieve()).unwrap() - torque_0;
@@ -126,7 +145,10 @@ pub fn idle(_cx: app::idle::Context) -> ! {
 }
 
 pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
-
+    if source == config::PI_NODE_ID && message.subject_id == config::ZERO_AFE {
+        log_info!("Zero AFE");
+        cortex_m::interrupt::free(|cs| REZERO_FLAG.borrow(cs).replace(true));
+    }
 }
 
 pub fn handle_service_request(source: NodeId, service: Service, payload: &[u8]) {
