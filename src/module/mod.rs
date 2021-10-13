@@ -4,6 +4,11 @@ pub mod pi;
 pub use pi::handle_message;
 #[cfg(feature = "module-pi")]
 pub use pi::handle_service_request;
+#[cfg(not(feature = "module-pi"))]
+pub mod pi {
+    pub type Event = ();
+    pub type PiEn = ();
+}
 
 #[cfg(feature = "module-led")]
 pub mod led;
