@@ -22,7 +22,11 @@ mod task;
 mod prelude;
 mod ramp_generator;
 
-pub type TimMono = tim_systick_monotonic::TimSystickMonotonic<8_000_000>;
+#[cfg(feature = "module-led")]
+pub const SYS_CLK_HZ: u32 = 48_000_000;
+#[cfg(not(feature = "module-led"))]
+pub const SYS_CLK_HZ: u32 = 8_000_000;
+pub type TimMono = tim_systick_monotonic::TimSystickMonotonic<SYS_CLK_HZ>;
 
 #[app(device = stm32f0xx_hal::stm32, peripherals = true, dispatchers = [TSC, FLASH])]
 mod app {
@@ -36,7 +40,7 @@ mod app {
     use stm32f0xx_hal::syscfg::SYSCFG;
     use tim_systick_monotonic::TimSystickMonotonic;
 
-    use crate::canbus;
+    use crate::{canbus, SYS_CLK_HZ};
     use crate::config;
     use crate::log_info;
     use crate::task::blink::{blink_task, BlinkerEvent, BlinkerState};
@@ -102,8 +106,8 @@ mod app {
 
         let cp = cx.core;
         let mut dp: super::pac::Peripherals = cx.device;
-        let mono = TimSystickMonotonic::new(cp.SYST, dp.TIM15, dp.TIM17, 8_000_000);
-        let mut rcc = dp.RCC.configure().sysclk(8.mhz()).freeze(&mut dp.FLASH);
+        let mono = TimSystickMonotonic::new(cp.SYST, dp.TIM15, dp.TIM17, SYS_CLK_HZ);
+        let mut rcc = dp.RCC.configure().sysclk(SYS_CLK_HZ.hz()).freeze(&mut dp.FLASH);
         #[allow(unused_mut, unused_variables)]
         let mut exti = Exti::new(dp.EXTI);
         #[allow(unused_mut, unused_variables)]
@@ -236,12 +240,12 @@ mod app {
         button_task::spawn().ok();
 
         #[cfg(feature = "module-led")]
-        let drv8323 = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12,  pa8, pb2, pa9, pa4, pa10,dp.SPI2, &mut rcc);
+        let drv8323 = crate::module::led::init(pb8, pb9, pb13, pb14, pb15, pb7, pb12,  pa8, pb2, pa9, pa4, pa10, pa7, pb0, pb1, dp.SPI2, &mut rcc);
         #[cfg(feature = "module-led")]
         animation_task::spawn().ok();
 
         #[cfg(feature = "module-pi")]
-        let pi_en = crate::module::pi::init(pb0);
+        let pi_en = crate::module::pi::init(pb0, pb2);
         #[cfg(feature = "module-afe-hx711")]
         let (hx711_rate, hx711) = crate::module::afe::init_hx711(mono.new_handle(),pa8, pb6, pa10, pb7, pb8);
         #[cfg(feature = "module-afe-lmp")]
