@@ -101,7 +101,7 @@ pub fn button_task(mut cx: app::button_task::Context) {
         let frame = Frame::new(FrameId::new_extended((VESC_SET_CURRENT_BRAKE << 8) | VESC_ID).unwrap(), &BRAKE_CURRENT_MILLIAMPS.to_be_bytes()).unwrap();
         can_send!(cx, frame);
 
-        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, config::POWER_BUTTON_SUBJECT, false, Priority::Nominal);
+        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, config::SAFETY_BUTTON_SUBJECT, false, Priority::Nominal);
         let frame = Frame::new(id.into(), &[]).unwrap();
         can_send!(cx, frame);
     }

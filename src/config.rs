@@ -22,6 +22,7 @@ pub const BUTTON_UAVCAN_NODE_ID: NodeId = NodeId::new(3).unwrap();
 #[cfg(feature = "module-button")]
 pub const UAVCAN_NODE_ID: NodeId = BUTTON_UAVCAN_NODE_ID;
 pub const POWER_BUTTON_SUBJECT: SubjectId = SubjectId::new(20).unwrap();
+pub const SAFETY_BUTTON_SUBJECT: SubjectId = SubjectId::new(21).unwrap();
 
 #[cfg(feature = "module-afe")]
 pub const UAVCAN_NODE_ID: NodeId = NodeId::new(2).unwrap();
