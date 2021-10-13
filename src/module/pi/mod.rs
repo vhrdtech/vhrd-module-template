@@ -1,5 +1,5 @@
 use stm32f0xx_hal::gpio::{Floating, Input, PushPull, Output};
-use stm32f0xx_hal::gpio::gpiob::PB0;
+use stm32f0xx_hal::gpio::gpiob::{PB0, PB2};
 use embedded_hal::digital::v2::{OutputPin, StatefulOutputPin};
 use crate::prelude::*;
 use crate::app;
@@ -11,12 +11,14 @@ pub struct Resources {
     pi_en: PB0<Output<PushPull>>,
 }
 
-pub fn init(pi_en: PB0<Input<Floating>>) -> PiEn {
-    let (pi_en, ) = cortex_m::interrupt::free(|cs| {
+pub fn init(pi_en: PB0<Input<Floating>>, pi_can_stby: PB2<Input<Floating>>) -> PiEn {
+    let (pi_en, mut pi_can_stby, ) = cortex_m::interrupt::free(|cs| {
         (
             pi_en.into_push_pull_output(cs),
+            pi_can_stby.into_push_pull_output(cs),
         )
     });
+    pi_can_stby.set_low().ok();
     // pi_en.set_high().ok();
 
     pi_en
