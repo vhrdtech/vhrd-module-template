@@ -3,7 +3,8 @@ use crate::prelude::*;
 use crate::pac::SPI2;
 use drv8323::DRV8323;
 use hal::gpio::{
-    gpiob::{PB12, PB13, PB14, PB15, PB7, PB8, PB9},
+    gpioa::PA7,
+    gpiob::{PB0, PB1, PB12, PB13, PB14, PB15, PB7, PB8, PB9},
     Floating, Input,
 };
 use stm32f0xx_hal::gpio::gpioa::{PA10, PA8, PA9, PA4};
@@ -39,6 +40,10 @@ pub fn init(
     lb_hiz: PA4<Input<Floating>>,
     hc: PA10<Input<Floating>>,
 
+    led0_pwm: PA7<Input<Floating>>,
+    led1_pwm: PB0<Input<Floating>>,
+    led2_pwm: PB1<Input<Floating>>,
+
     spi2: hal::pac::SPI2,
     rcc: &mut hal::rcc::Rcc,
 ) -> (Option<Drv8323Instance>) {
@@ -54,7 +59,10 @@ pub fn init(
         mut la_hiz,
         mut hb,
         mut lb_hiz,
-        hc
+        hc,
+        _led0_pwm,
+        _led1_pwm,
+        _led2_pwm,
     ) =
         cortex_m::interrupt::free(|cs| {
             (
@@ -72,6 +80,9 @@ pub fn init(
                 hb.into_push_pull_output(cs),
                 lb_hiz.into_push_pull_output(cs),
                 hc.into_alternate_af2(cs),
+                led0_pwm.into_alternate_af1(cs),
+                led1_pwm.into_alternate_af1(cs),
+                led2_pwm.into_alternate_af1(cs),
             )
         });
     la_hiz.set_low().ok();
@@ -98,10 +109,14 @@ pub fn init(
             None
         }
     };
-    log_info!("Init TIM1");
+    // log_info!("Init TIM1");
 
     // init_tim1(rcc.clocks.sysclk(), 20.khz().into());
     // tim1_set_duty(50);
+
+    init_tim3(rcc.clocks.sysclk(), 20.khz().into());
+    tim3_set_duty(2390); // 2400 max on 48mhz+20khz
+    log_info!("tim3_max_duty: {}", tim3_max_duty());
 
     (drv8323)
 }
@@ -132,7 +147,7 @@ pub fn animation_task(mut cx: app::animation_task::Context) {
         }
     });
 
-    app::animation_task::spawn_after(Milliseconds::new(100_u32)).ok();
+    app::animation_task::spawn_after(Milliseconds::new(1000_u32)).ok();
 }
 
 fn configure_drv8323(drv8323: &mut Drv8323Instance) -> drv8323::DrvResult {
@@ -275,4 +290,107 @@ fn tim1_set_duty(duty: u16) {
     dp.TIM1.ccr2.write(|w| unsafe { w.bits(0) });
     // dp.TIM1.ccr3.write(|w| unsafe { w.bits(self.duty_c) });
     dp.TIM1.cr1.modify(|_, w| w.udis().enabled());
+}
+
+fn init_tim3(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::time::Hertz) {
+    let dp = unsafe { crate::hal::pac::Peripherals::steal() };
+    dp.RCC.apb1enr.modify(|_, w| w.tim3en().enabled());
+    dp.RCC.apb1rstr.modify(|_, w| w.tim3rst().set_bit());
+    dp.RCC.apb1rstr.modify(|_, w| w.tim3rst().clear_bit());
+
+    let tim = dp.TIM3;
+    tim
+        .cr1
+        .write(|w| w.cms().center_aligned1().ckd().div1());
+    let arr_bits = (core_freq.0 / pwm_freq.0) as u16;
+    tim.arr.write(|w| w.arr().bits(arr_bits));
+    tim.psc.write(|w| w.psc().bits(0));
+    // tim.rcr.write(|w| unsafe { w.rep().bits(0) });
+    tim.egr.write(|w| w.ug().update());
+
+    // Disable output compare 1,2,3
+    tim.ccer.modify(|_, w| {
+        w.cc1e()
+            .clear_bit()
+            // .cc1ne()
+            // .clear_bit()
+            .cc2e()
+            .clear_bit()
+            // .cc2ne()
+            // .clear_bit()
+            .cc3e()
+            .clear_bit()
+            // .cc3ne()
+            // .clear_bit()
+    });
+    // Output idle and idle_n state
+    // tim.cr2.modify(
+    //     |_, w| {
+    //         w.ois1()
+    //             .set_bit() //.ois1n().set_bit()
+    //             .ois2()
+    //             .set_bit() //.ois2n().set_bit()
+    //             .ois3()
+    //             .set_bit()
+    //     }, //.ois3n().set_bit()
+    // );
+    // Select output mode
+    tim
+        .ccmr1_output_mut()
+        .modify(|_, w| w.oc1m().pwm_mode1().oc2m().pwm_mode1());
+    tim
+        .ccmr2_output_mut()
+        .modify(|_, w| w.oc3m().pwm_mode1());
+    tim.ccr1.write(|w| w.ccr().bits(arr_bits / 2));
+    tim.ccr2.write(|w| w.ccr().bits(arr_bits / 2));
+    tim.ccr3.write(|w| w.ccr().bits(arr_bits / 2));
+    tim.ccer.modify(
+        |_, w| {
+            w
+                // polarity
+                .cc1p()
+                .set_bit()
+                .cc2p()
+                .set_bit()
+                .cc3p()
+                .set_bit()
+                // enable outputs
+                .cc1e()
+                .set_bit() //.cc1ne().set_bit()
+                .cc2e()
+                .set_bit() //.cc2ne().set_bit()
+                .cc3e()
+                .set_bit()
+        }, //.cc3ne().set_bit()
+    );
+    // Enable preload
+    tim
+        .ccmr1_output_mut()
+        .modify(|_, w| w.oc1pe().enabled().oc2pe().enabled());
+    tim
+        .ccmr2_output_mut()
+        .modify(|_, w| w.oc3pe().set_bit());
+    // Preload enable on CCR and ARR
+    // tim.cr2.modify(|_, w| w.ccpc().set_bit());
+    tim.cr1.modify(|_, w| w.arpe().set_bit());
+    // Enable
+    // tim.cnt.write(0)
+    tim.cr1.modify(|_, w| w.cen().enabled());
+    // tim.bdtr.modify(|_, w| w.moe().enabled());
+}
+
+fn tim3_set_duty(duty: u16) {
+    let dp = unsafe { crate::hal::pac::Peripherals::steal() };
+    let max_duty = dp.TIM3.arr.read().bits();
+    dp.TIM3.cr1.modify(|_, w| w.udis().disabled());
+    dp.TIM3.ccr1.write(|w| unsafe { w.bits(duty as u32) });
+    dp.TIM3.ccr2.write(|w| unsafe { w.bits(duty as u32) });
+    dp.TIM3.ccr3.write(|w| unsafe { w.bits(duty as u32) });
+    dp.TIM3.cr1.modify(|_, w| w.udis().enabled());
+}
+
+fn tim3_max_duty() -> u32 {
+    let dp = unsafe { crate::hal::pac::Peripherals::steal() };
+    let max_duty = dp.TIM3.arr.read().bits();
+    max_duty
 }
