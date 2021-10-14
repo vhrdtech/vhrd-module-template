@@ -125,7 +125,7 @@ macro_rules! count_result {
         let column = column!();
         match $expr {
             Ok(_) => {
-                log_debug!("count: ok: {}:{}:{}", file, line, column);
+                // log_debug!("count: ok: {}:{}:{}", file, line, column);
             },
             Err(_) => {
                 log_error!("count: err: {}:{}:{}", file, line, column);

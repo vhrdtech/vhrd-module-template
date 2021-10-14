@@ -43,7 +43,7 @@ impl State {
 pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
     let state: &mut State = cx.local.state;
     let now: Instant<crate::TimMono> = app::monotonics::TimMono::now();
-    log_debug!("ramp e: {:?} s: {:?}", e, state);
+    log_debug!("ramp_generator e: {:?} s: {:?}", e, state);
     let (new_state, respawn) = match *state {
         State::Off => match e {
             Event::SetTarget {target, rate_per_s} => {
@@ -113,6 +113,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                 new_current,
                 input_dt
             );
+            count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(new_current)));
 
             if new_current == target {
                 if target == 0 {
@@ -147,6 +148,8 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
             last_input_t,
             rate_per_s,
         } => {
+            count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(current)));
+
             let (last_input_t, maybe_new_target, respawn, rate_per_s) = match e {
                 Event::SetTarget {target, rate_per_s} => (now, target, false, rate_per_s),
                 Event::_Internal => (last_input_t, current, true, rate_per_s),

@@ -9,6 +9,8 @@ pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
 #[cfg(feature = "module-led")]
 pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(10).unwrap();
+#[cfg(feature = "module-led")]
+pub const DUTY_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(13).unwrap();
 
 #[cfg(feature = "module-afe")]
 pub const ZERO_AFE: SubjectId = SubjectId::new(11).unwrap();

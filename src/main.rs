@@ -436,12 +436,20 @@ mod app {
     }
 
 
-    #[task(capacity = 2, shared = [drv8323], local = [
+    #[task(capacity = 2, shared = [], local = [
         state: crate::ramp_generator::State = crate::ramp_generator::State::new()
     ])]
     fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
         #[cfg(feature = "module-led")]
             crate::ramp_generator::ramp_generator(_cx, _e);
+    }
+
+    #[task(capacity = 2, shared = [can_mcp_tx, can_stm_tx, ], local = [
+    state: crate::ramp_vesc::State = crate::ramp_vesc::State::new()
+    ])]
+    fn ramp_vesc(_cx: ramp_vesc::Context, _e: crate::ramp_vesc::Event) {
+        #[cfg(feature = "module-led")]
+            crate::ramp_vesc::ramp_vesc(_cx, _e);
     }
 
     #[task(capacity = 1, local = [pi_en])]

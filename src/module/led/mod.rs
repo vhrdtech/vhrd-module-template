@@ -172,17 +172,20 @@ impl embedded_hal::blocking::delay::DelayUs<u32> for DummyDelay {
 }
 
 pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
-    use crate::ramp_generator::Event;
+    use crate::ramp_vesc::Event;
 
     if source == config::PI_NODE_ID && message.subject_id == config::RMP_RAMP_TARGET_SUBJECT_ID {
         if payload.len() < 4 {
             return;
         }
         let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
-        count_result!(app::ramp_generator::spawn(Event::SetTarget {
-            target: rpm,
-            rate_per_s: 10,
-        }));
+        count_result!(app::ramp_vesc::spawn(Event::SetRpmTarget(rpm)));
+    } else if source == config::PI_NODE_ID && message.subject_id == config::DUTY_RAMP_TARGET_SUBJECT_ID {
+        if payload.len() < 4 {
+            return;
+        }
+        let duty_p5 = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
+        count_result!(app::ramp_vesc::spawn(Event::SetDutyTarget(duty_p5)));
     }
 }
 
