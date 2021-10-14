@@ -7,7 +7,7 @@ pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
 pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
 pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
-#[cfg(feature = "module-pi")]
+#[cfg(feature = "module-led")]
 pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(10).unwrap();
 
 #[cfg(feature = "module-afe")]

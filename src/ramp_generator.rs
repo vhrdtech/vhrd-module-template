@@ -4,13 +4,16 @@ use embedded_time::duration::Microseconds;
 use embedded_time::Instant;
 use rtic::rtic_monotonic::Milliseconds;
 
-const RPM_PER_S: u32 = 10;
+// const RPM_PER_S: u32 = 10;
 const EMIT_PERIOD: Milliseconds = Milliseconds(100);
 const INPUT_TIMEOUT: Milliseconds = Milliseconds(2000);
 
 #[derive(Debug)]
 pub enum Event {
-    SetRpmTarget(i32),
+    SetTarget {
+        target: i32,
+        rate_per_s: u32
+    },
     _Internal,
 }
 
@@ -22,9 +25,11 @@ pub enum State {
         last_input_t: Instant<crate::TimMono>,
         current: i32,
         target: i32,
+        rate_per_s: u32,
     },
     Hold {
         current: i32,
+        rate_per_s: u32,
         last_input_t: Instant<crate::TimMono>,
     },
 }
@@ -41,7 +46,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
     log_debug!("ramp e: {:?} s: {:?}", e, state);
     let (new_state, respawn) = match *state {
         State::Off => match e {
-            Event::SetRpmTarget(target) => {
+            Event::SetTarget {target, rate_per_s} => {
                 if target == 0 {
                     (State::Off, false)
                 } else {
@@ -51,6 +56,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                             last_input_t: now,
                             current: 0,
                             target,
+                            rate_per_s,
                         },
                         true,
                     )
@@ -63,25 +69,26 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
             last_input_t,
             current,
             target,
+            rate_per_s,
         } => {
             let dt = now
                 .checked_duration_since(&prev_t)
                 .map(|dt| Milliseconds::<u32>::try_from(dt).unwrap_or(Milliseconds(0)))
                 .unwrap_or(Milliseconds(0));
-            let dv = (RPM_PER_S * dt.0 / 1000) as i32;
+            let dv = (rate_per_s * dt.0 / 1000) as i32;
             let dv = if dv == 0 { 1 } else { dv };
 
             let input_dt = now
                 .checked_duration_since(&last_input_t)
                 .map(|dt| Milliseconds::<u32>::try_from(dt).unwrap_or(Milliseconds(0)))
                 .unwrap_or(Milliseconds(0));
-            let (target, last_input_t, respawn) = match e {
-                Event::SetRpmTarget(target) => (target, now, false),
+            let (target, last_input_t, respawn, rate_per_s) = match e {
+                Event::SetTarget {target, rate_per_s} => (target, now, false, rate_per_s),
                 Event::_Internal => {
                     if input_dt > INPUT_TIMEOUT {
-                        (0, last_input_t, true)
+                        (0, last_input_t, true, rate_per_s)
                     } else {
-                        (target, last_input_t, true)
+                        (target, last_input_t, true, rate_per_s)
                     }
                 }
             };
@@ -115,6 +122,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                         State::Hold {
                             current: target,
                             last_input_t,
+                            rate_per_s,
                         },
                         respawn,
                     )
@@ -126,6 +134,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                         last_input_t,
                         current: new_current,
                         target,
+                        rate_per_s
                     },
                     respawn,
                 )
@@ -136,10 +145,11 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
         State::Hold {
             current,
             last_input_t,
+            rate_per_s,
         } => {
-            let (last_input_t, maybe_new_target, respawn) = match e {
-                Event::SetRpmTarget(target) => (now, target, false),
-                Event::_Internal => (last_input_t, current, true),
+            let (last_input_t, maybe_new_target, respawn, rate_per_s) = match e {
+                Event::SetTarget {target, rate_per_s} => (now, target, false, rate_per_s),
+                Event::_Internal => (last_input_t, current, true, rate_per_s),
             };
             let input_dt = now
                 .checked_duration_since(&last_input_t)
@@ -152,6 +162,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                         last_input_t,
                         current,
                         target: 0,
+                        rate_per_s
                     },
                     respawn,
                 )
@@ -161,6 +172,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                         State::Hold {
                             current,
                             last_input_t,
+                            rate_per_s
                         },
                         respawn,
                     )
@@ -171,6 +183,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                             last_input_t,
                             current,
                             target: maybe_new_target,
+                            rate_per_s
                         },
                         respawn,
                     )

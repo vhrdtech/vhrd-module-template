@@ -15,6 +15,7 @@ use drv8323::registers::DrvRegister;
 use embedded_time::duration::Milliseconds;
 use stm32f0xx_hal::gpio::gpiob::PB2;
 use embedded_hal::digital::v2::OutputPin;
+use crate::utils::clone_into_array;
 
 pub type Drv8323Instance = DRV8323<
     Spi<SPI2, PB13<Alternate<AF0>>, PB14<Alternate<AF0>>, PB15<Alternate<AF0>>, SixteenBit>,
@@ -115,37 +116,37 @@ pub fn init(
     // tim1_set_duty(50);
 
     init_tim3(rcc.clocks.sysclk(), 20.khz().into());
-    tim3_set_duty(2390); // 2400 max on 48mhz+20khz
+    tim3_set_duty(2220); // 1800 - 2400 max on 48mhz+20khz
     log_info!("tim3_max_duty: {}", tim3_max_duty());
 
     (drv8323)
 }
 
 pub fn animation_task(mut cx: app::animation_task::Context) {
-    cx.shared.drv8323.lock(|drv8323| {
-        match drv8323 {
-            Some(drv8323) => {
-                let drv8323: &mut Drv8323Instance = drv8323;
-                match drv8323.read_register(DrvRegister::FaultStatus1) {
-                    Ok(fault_status_1) => {
-                        log_debug!("fault_status_1: {:011b}", fault_status_1);
-                    },
-                    Err(e) => {
-                        log_error!("drv8323 err: {:?}", e);
-                    }
-                }
-                match drv8323.read_register(DrvRegister::FaultStatus2) {
-                    Ok(fault_status_2) => {
-                        log_debug!("fault_status_2: {:011b}", fault_status_2);
-                    },
-                    Err(e) => {
-                        log_error!("drv8323 err: {:?}", e);
-                    }
-                }
-            },
-            None => {}
-        }
-    });
+    // cx.shared.drv8323.lock(|drv8323| {
+    //     match drv8323 {
+    //         Some(drv8323) => {
+    //             let drv8323: &mut Drv8323Instance = drv8323;
+    //             match drv8323.read_register(DrvRegister::FaultStatus1) {
+    //                 Ok(fault_status_1) => {
+    //                     log_debug!("fault_status_1: {:011b}", fault_status_1);
+    //                 },
+    //                 Err(e) => {
+    //                     log_error!("drv8323 err: {:?}", e);
+    //                 }
+    //             }
+    //             match drv8323.read_register(DrvRegister::FaultStatus2) {
+    //                 Ok(fault_status_2) => {
+    //                     log_debug!("fault_status_2: {:011b}", fault_status_2);
+    //                 },
+    //                 Err(e) => {
+    //                     log_error!("drv8323 err: {:?}", e);
+    //                 }
+    //             }
+    //         },
+    //         None => {}
+    //     }
+    // });
 
     app::animation_task::spawn_after(Milliseconds::new(1000_u32)).ok();
 }
@@ -171,7 +172,18 @@ impl embedded_hal::blocking::delay::DelayUs<u32> for DummyDelay {
 }
 
 pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
+    use crate::ramp_generator::Event;
 
+    if source == config::PI_NODE_ID && message.subject_id == config::RMP_RAMP_TARGET_SUBJECT_ID {
+        if payload.len() < 4 {
+            return;
+        }
+        let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
+        count_result!(app::ramp_generator::spawn(Event::SetTarget {
+            target: rpm,
+            rate_per_s: 10,
+        }));
+    }
 }
 
 pub fn handle_service_request(source: NodeId, service: Service, payload: &[u8]) {
