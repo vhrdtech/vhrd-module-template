@@ -21,10 +21,14 @@ mod module;
 mod task;
 mod prelude;
 mod ramp_generator;
+mod utils;
+mod ramp_vesc;
 
 #[cfg(feature = "module-led")]
 pub const SYS_CLK_HZ: u32 = 48_000_000;
-#[cfg(not(feature = "module-led"))]
+#[cfg(feature = "module-pi")]
+pub const SYS_CLK_HZ: u32 = 8_000_000;
+#[cfg(not(any(feature = "module-led", feature = "module-pi")))]
 pub const SYS_CLK_HZ: u32 = 8_000_000;
 pub type TimMono = tim_systick_monotonic::TimSystickMonotonic<SYS_CLK_HZ>;
 
@@ -51,6 +55,7 @@ mod app {
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
+    use stm32f0xx_hal::rcc::HSEBypassMode;
 
     #[shared]
     struct Shared {
@@ -107,7 +112,18 @@ mod app {
         let cp = cx.core;
         let mut dp: super::pac::Peripherals = cx.device;
         let mono = TimSystickMonotonic::new(cp.SYST, dp.TIM15, dp.TIM17, SYS_CLK_HZ);
+
+        // #[cfg(not(feature = "module-pi"))]
         let mut rcc = dp.RCC.configure().sysclk(SYS_CLK_HZ.hz()).freeze(&mut dp.FLASH);
+        // cfg_if! {
+        //     if #[cfg(feature = "module-pi")] {
+        //         let mut rcc = dp.RCC.configure().hse(2.mhz(), HSEBypassMode::Bypassed).sysclk(40.mhz()).freeze(&mut dp.FLASH);
+        //         let dp = unsafe { crate::hal::pac::Peripherals::steal() };
+        //         dp.RCC.cfgr.modify(|_, w| w.mco().sysclk().mcopre().div1());
+        //     }
+        // }
+
+
         #[allow(unused_mut, unused_variables)]
         let mut exti = Exti::new(dp.EXTI);
         #[allow(unused_mut, unused_variables)]
@@ -200,6 +216,10 @@ mod app {
             )
         });
         can_stby.set_low().ok();
+        #[cfg(feature = "module-pi")] {
+            let _ = cortex_m::interrupt::free(|cs| pa8.into_alternate_af0(cs));
+        }
+
 
         #[cfg(feature = "can-mcp25625")]
         let can_mcp25625 = match canbus::can_mcp25625_init(dp.SPI1, mcp25625_sck, mcp25625_miso, mcp25625_mosi, mcp25625_cs, &mut rcc) {
@@ -252,6 +272,7 @@ mod app {
         let _ = crate::module::afe::init_lmp();
 
 
+        log_info!("Init succeeded, sysclk={}", rcc.clocks.sysclk().0);
 
         (
             Shared{
@@ -419,7 +440,7 @@ mod app {
         state: crate::ramp_generator::State = crate::ramp_generator::State::new()
     ])]
     fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
-        #[cfg(feature = "module-pi")]
+        #[cfg(feature = "module-led")]
             crate::ramp_generator::ramp_generator(_cx, _e);
     }
 

@@ -49,31 +49,15 @@ pub fn pi_task(cx: app::pi_task::Context, e: Event) {
 
 pub fn idle(_cx: app::idle::Context) -> ! {
     loop {
-        cortex_m::asm::delay(1_000_000);
+        cortex_m::asm::delay(20_000_000);
+        // log_info!("idle");
     }
 }
 
 use core::convert::AsMut;
 use rtic::rtic_monotonic::Seconds;
-// use crate::ramp_generator::Event;
-
-fn clone_into_array<A, T>(slice: &[T]) -> A
-    where A: Sized + Default + AsMut<[T]>,
-          T: Clone
-{
-    let mut a = Default::default();
-    <A as AsMut<[T]>>::as_mut(&mut a).clone_from_slice(slice);
-    a
-}
 
 pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
-    // if source == config::PI_NODE_ID && message.subject_id == config::RMP_RAMP_TARGET_SUBJECT_ID {
-    //     if payload.len() < 4 {
-    //         return;
-    //     }
-    //     let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
-    //     count_result!(app::ramp_generator::spawn(Event::SetRpmTarget(rpm)));
-    // } else
     if source == config::BUTTON_UAVCAN_NODE_ID && message.subject_id == config::POWER_BUTTON_SUBJECT {
         log_info!("Power button pressed");
         app::pi_task::spawn(Event::Toggle).ok();

@@ -120,7 +120,7 @@ fn mcp25625_configure(mcp25625: &mut config::Mcp25625Instance) -> Result<(), Mcp
     };
     mcp25625.apply_config(mcp_config)?;
     mcp25625.enable_interrupts(0b0001_1111);
-    mcp25625.clkout_mode(mcp25625::ClkOutMode::SystemClock);
+    mcp25625.clkout_mode(mcp25625::ClkOutMode::SystemClockDiv8); // default is /8 as well = 2MHz
     Ok(())
 }
 
@@ -227,10 +227,18 @@ pub fn can_stm_init(
 
     let can = hal::can::CanInstance::new(can_peripheral, can_tx, can_rx, rcc);
     let mut can = hal::can::bxcan::Can::new(can);
+    #[cfg(feature = "module-button")]
+    let bit_timing = 0x00050000;
+    #[cfg(feature = "module-afe")]
+    let bit_timing = 0x00050000;
+    #[cfg(feature = "module-pi")]
+    let bit_timing = 0x00050000;
+    #[cfg(feature = "module-led")]
+    let bit_timing = 0x001c0002;
     can.modify_config()
         .set_loopback(false)
         .set_silent(false)
-        .set_bit_timing(0x00050000);
+        .set_bit_timing(bit_timing);
     {
         let mut filters = can.modify_filters();
         filters.enable_bank(0, BankConfig::Mask32(Mask32::accept_all()));

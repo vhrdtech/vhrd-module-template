@@ -53,5 +53,6 @@ pub fn health_check_task(mut cx: crate::app::health_check_task::Context) {
     let frame = Slicer::<8>::new_single(OwnedSlice::new(payload, 5), id, &mut cx.local.state.transfer_id);
     can_send!(cx, frame);
 
+    //log_info!("uptime: {}s", uptime);
     app::health_check_task::spawn_after(config::HEALTH_CHECK_PERIOD).ok();
 }
