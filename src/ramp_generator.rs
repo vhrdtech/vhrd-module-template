@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use core::convert::TryFrom;
-use embedded_time::duration::Microseconds;
 use embedded_time::Instant;
 use rtic::rtic_monotonic::Milliseconds;
 
@@ -10,6 +9,11 @@ const INPUT_TIMEOUT: Milliseconds = Milliseconds(2000);
 
 #[derive(Debug)]
 pub enum Event {
+    Reset {
+        initial: i32,
+        target: i32,
+        rate_per_s: u32,
+    },
     SetTarget {
         target: i32,
         rate_per_s: u32
@@ -44,8 +48,34 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
     let state: &mut State = cx.local.state;
     let now: Instant<crate::TimMono> = app::monotonics::TimMono::now();
     log_debug!("ramp_generator e: {:?} s: {:?}", e, state);
+    if let Event::Reset { initial, target, rate_per_s } = e {
+        if target == initial {
+            *state = State::Hold {
+                current: initial,
+                rate_per_s,
+                last_input_t: now
+            };
+        } else {
+            *state = State::Ramp {
+                prev_t: now,
+                last_input_t: now,
+                current: initial,
+                target,
+                rate_per_s
+            };
+        }
+        count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(initial)));
+        if let State::Off = state {
+            count_result!(app::ramp_generator::spawn_after(
+                EMIT_PERIOD,
+                Event::_Internal
+            ));
+        }
+        return;
+    }
     let (new_state, respawn) = match *state {
         State::Off => match e {
+            Event::Reset { .. } => unreachable!(),
             Event::SetTarget {target, rate_per_s} => {
                 if target == 0 {
                     (State::Off, false)
@@ -83,6 +113,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                 .map(|dt| Milliseconds::<u32>::try_from(dt).unwrap_or(Milliseconds(0)))
                 .unwrap_or(Milliseconds(0));
             let (target, last_input_t, respawn, rate_per_s) = match e {
+                Event::Reset { .. } => unreachable!(),
                 Event::SetTarget {target, rate_per_s} => (target, now, false, rate_per_s),
                 Event::_Internal => {
                     if input_dt > INPUT_TIMEOUT {
@@ -92,8 +123,9 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                     }
                 }
             };
+            count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(current)));
 
-            let new_current = if target > 0 {
+            let new_current = if target - current > 0 {
                 if current + dv > target {
                     target
                 } else {
@@ -113,7 +145,6 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
                 new_current,
                 input_dt
             );
-            count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(new_current)));
 
             if new_current == target {
                 if target == 0 {
@@ -151,6 +182,7 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
             count_result!(app::ramp_vesc::spawn(crate::ramp_vesc::Event::_RampGenerator(current)));
 
             let (last_input_t, maybe_new_target, respawn, rate_per_s) = match e {
+                Event::Reset { .. } => unreachable!(),
                 Event::SetTarget {target, rate_per_s} => (now, target, false, rate_per_s),
                 Event::_Internal => (last_input_t, current, true, rate_per_s),
             };
@@ -200,5 +232,13 @@ pub fn ramp_generator(cx: app::ramp_generator::Context, e: Event) {
             EMIT_PERIOD,
             Event::_Internal
         ));
+        // match app::ramp_generator::spawn_after(EMIT_PERIOD, Event::_Internal) {
+        //     Ok(handle) => {
+        //         let _:() = handle;
+        //     },
+        //     Err(e) => {
+        //         log_error!("ramp_generator: spawn e: {:?}", e);
+        //     }
+        // }
     }
 }
