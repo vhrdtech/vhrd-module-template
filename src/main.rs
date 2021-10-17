@@ -20,9 +20,11 @@ mod units;
 mod module;
 mod task;
 mod prelude;
-mod ramp_generator;
+// mod ramp_generator;
 mod utils;
 mod ramp_vesc;
+// mod tf_vesc;
+mod ramp_generator2;
 
 #[cfg(feature = "module-led")]
 pub const SYS_CLK_HZ: u32 = 48_000_000;
@@ -55,7 +57,7 @@ mod app {
 
     // use rtt_target::{rtt_init_default, rprintln, rtt_init_print};
     use super::logging;
-    use stm32f0xx_hal::rcc::HSEBypassMode;
+    // use stm32f0xx_hal::rcc::HSEBypassMode;
 
     #[shared]
     struct Shared {
@@ -74,6 +76,17 @@ mod app {
 
         #[cfg(feature = "module-led")]
         drv8323: Option<module::led::Drv8323Instance>,
+        #[cfg(feature = "module-led")]
+        stand_state: module::led::StandState,
+
+        #[cfg(feature = "vesc-ctrl")]
+        vesc_feedback: Option<crate::ramp_vesc::VescFeedback>,
+        #[cfg(feature = "vesc-ctrl")]
+        vesc_control_input: Option<crate::ramp_vesc::ControlInput>,
+        #[cfg(feature = "vesc-ctrl")]
+        vesc_watchdog_input: Option<i32>,
+        #[cfg(feature = "vesc-ctrl")]
+        vesc_watchdog_triggered: Option<()>,
     }
 
     #[local]
@@ -271,11 +284,15 @@ mod app {
         #[cfg(feature = "module-afe-lmp")]
         let _ = crate::module::afe::init_lmp();
 
+        #[cfg(feature = "vesc-ctrl")]
+        ramp_vesc::spawn().ok();
+        #[cfg(feature = "vesc-ctrl")]
+        watchdog_vesc::spawn().ok();
 
         log_info!("Init succeeded, sysclk={}", rcc.clocks.sysclk().0);
 
         (
-            Shared{
+            Shared {
                 #[cfg(feature = "can-stm")]
                 can_stm_tx: heapless::BinaryHeap::new(),
                 #[cfg(feature = "can-stm")]
@@ -291,6 +308,17 @@ mod app {
 
                 #[cfg(feature = "module-led")]
                 drv8323,
+                #[cfg(feature = "module-led")]
+                stand_state: module::led::StandState::new(),
+
+                #[cfg(feature = "vesc-ctrl")]
+                vesc_feedback: None,
+                #[cfg(feature = "vesc-ctrl")]
+                vesc_control_input: None,
+                #[cfg(feature = "vesc-ctrl")]
+                vesc_watchdog_input: None,
+                #[cfg(feature = "vesc-ctrl")]
+                vesc_watchdog_triggered: None,
             },
             Local {
                 #[cfg(feature = "can-mcp25625")]
@@ -435,21 +463,28 @@ mod app {
         module::led::animation_task(_cx);
     }
 
+    // #[task(capacity = 2, shared = [], local = [
+    //     state: crate::ramp_generator::State = crate::ramp_generator::State::new()
+    // ])]
+    // fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
+    //     #[cfg(feature = "module-led")]
+    //         crate::ramp_generator::ramp_generator(_cx, _e);
+    // }
 
-    #[task(capacity = 2, shared = [], local = [
-        state: crate::ramp_generator::State = crate::ramp_generator::State::new()
+    #[task(capacity = 1, shared = [can_mcp_tx, can_stm_tx, vesc_feedback, vesc_control_input, vesc_watchdog_input, vesc_watchdog_triggered], local = [
+        state: crate::ramp_vesc::State = crate::ramp_vesc::State::new()
     ])]
-    fn ramp_generator(_cx: ramp_generator::Context, _e: crate::ramp_generator::Event) {
-        #[cfg(feature = "module-led")]
-            crate::ramp_generator::ramp_generator(_cx, _e);
+    fn ramp_vesc(_cx: ramp_vesc::Context) {
+        #[cfg(feature = "vesc-ctrl")]
+        crate::ramp_vesc::ramp_vesc(_cx);
     }
 
-    #[task(capacity = 2, shared = [can_mcp_tx, can_stm_tx, ], local = [
-    state: crate::ramp_vesc::State = crate::ramp_vesc::State::new()
+    #[task(capacity = 1, shared = [can_mcp_tx, can_stm_tx, vesc_watchdog_input, vesc_watchdog_triggered], local = [
+        state: crate::ramp_vesc::WatchdogVescState = crate::ramp_vesc::WatchdogVescState::new()
     ])]
-    fn ramp_vesc(_cx: ramp_vesc::Context, _e: crate::ramp_vesc::Event) {
-        #[cfg(feature = "module-led")]
-            crate::ramp_vesc::ramp_vesc(_cx, _e);
+    fn watchdog_vesc(_cx: watchdog_vesc::Context) {
+        #[cfg(feature = "vesc-ctrl")]
+        crate::ramp_vesc::watchdog_vesc(_cx);
     }
 
     #[task(capacity = 1, local = [pi_en])]
@@ -458,8 +493,14 @@ mod app {
         crate::module::pi::pi_task(_cx, _e);
     }
 
+    #[task(capacity = 1, shared = [stand_state])]
+    fn unpress_estop(mut cx: unpress_estop::Context) {
+        cx.shared.stand_state.lock(|s| s.is_estop_pressed = false);
+        log_debug!("Estop UNpressed");
+    }
+
     extern "Rust" {
-        #[task(shared = [blinker], capacity = 2)]
+        #[task(shared = [blinker, stand_state], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
         #[task(
@@ -470,7 +511,7 @@ mod app {
         )]
         fn health_check_task(mut cx: health_check_task::Context);
 
-        #[task(shared = [can_mcp_rx, can_stm_rx])]
+        #[task(shared = [can_mcp_rx, can_stm_rx, vesc_feedback, vesc_control_input, stand_state])]
         fn can_rx_router(_cx: can_rx_router::Context);
 
     }

@@ -24,10 +24,38 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
 
         match frame {
             Some(frame) => {
+                match frame.id {
+                    FrameId::Standard(_) => continue,
+                    FrameId::Extended(eid) => {
+                        if eid.inner() == 0x907 {
+                            #[cfg(feature = "vesc-ctrl")]
+                            if let Some(feedback) = crate::ramp_vesc::VescFeedback::new(frame) {
+                                cx.shared.vesc_feedback.lock(|f| *f = Some(feedback));
+                            }
+                            continue;
+                        }
+                    }
+                }
                 match CanId::try_from(frame.id) {
                     Ok(uavcan_id) => {
                         match uavcan_id.transfer_kind {
                             TransferKind::Message(message) => {
+                                #[cfg(feature = "vesc-ctrl")]
+                                if let Some(input) = crate::ramp_vesc::ControlInput::new(uavcan_id.source_node_id, message, frame.data()) {
+                                    cx.shared.vesc_control_input.lock(|i| *i = Some(input));
+                                    continue;
+                                }
+                                if uavcan_id.source_node_id == config::BUTTON_UAVCAN_NODE_ID && message.subject_id == config::SAFETY_BUTTON_SUBJECT {
+                                    log_debug!("Estop pressed");
+                                    cx.shared.stand_state.lock(|s| s.is_estop_pressed = true);
+                                    let _ = app::unpress_estop::spawn_after(Milliseconds::new(500u32));
+                                } else if uavcan_id.source_node_id == config::BUTTON_UAVCAN_NODE_ID && message.subject_id == config::POWER_BUTTON_SUBJECT {
+                                    log_debug!("Pwr pressed");
+                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
+                                } else if uavcan_id.source_node_id == config::PI_NODE_ID && message.subject_id == SubjectId::new(77).unwrap() {
+                                    log_debug!("Pwr pressed virt");
+                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
+                                }
                                 if false {
 
                                 } else {
@@ -256,8 +284,9 @@ pub fn can_stm_init(
 
 #[cfg(feature = "can-stm")]
 use hal::can::bxcan::Frame as BxFrame;
-use uavcan_llr::types::{CanId, TransferKind};
+use uavcan_llr::types::{CanId, TransferKind, SubjectId};
 use core::convert::TryFrom;
+use embedded_time::duration::Milliseconds;
 // use vhrd_module_nvconfig::NVConfig;
 
 pub struct CanStmState {

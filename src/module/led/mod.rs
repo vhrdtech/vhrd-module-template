@@ -11,11 +11,36 @@ use stm32f0xx_hal::gpio::gpioa::{PA10, PA8, PA9, PA4};
 use stm32f0xx_hal::gpio::{Alternate, Output, PushPull, AF0};
 use stm32f0xx_hal::spi::{SixteenBit, Spi};
 use stm32f0xx_hal::time::U32Ext;
-use drv8323::registers::DrvRegister;
+// use drv8323::registers::DrvRegister;
 use embedded_time::duration::Milliseconds;
 use stm32f0xx_hal::gpio::gpiob::PB2;
 use embedded_hal::digital::v2::OutputPin;
 use crate::utils::clone_into_array;
+
+pub struct StandState {
+    pub is_power_enabled: bool,
+    pub is_estop_pressed: bool,
+}
+impl StandState {
+    pub fn new() -> Self {
+        StandState {
+            is_power_enabled: false,
+            is_estop_pressed: false,
+        }
+    }
+    pub fn set_animation_step(&self, percent1000: u16) {
+        if self.is_power_enabled {
+            if self.is_estop_pressed {
+                tim3_set_duty(1000, 0, 0);
+            } else {
+                tim3_set_white(1000);
+            }
+        } else {
+            // BRG
+            tim3_set_duty( 0, 0, percent1000);
+        }
+    }
+}
 
 pub type Drv8323Instance = DRV8323<
     Spi<SPI2, PB13<Alternate<AF0>>, PB14<Alternate<AF0>>, PB15<Alternate<AF0>>, SixteenBit>,
@@ -47,7 +72,7 @@ pub fn init(
 
     spi2: hal::pac::SPI2,
     rcc: &mut hal::rcc::Rcc,
-) -> (Option<Drv8323Instance>) {
+) ->Option<Drv8323Instance> {
     let (
         drv_sck,
         drv_miso,
@@ -58,9 +83,9 @@ pub fn init(
         drv_nfault,
         mut ha,
         mut la_hiz,
-        mut hb,
+        _hb,
         mut lb_hiz,
-        hc,
+        _hc,
         _led0_pwm,
         _led1_pwm,
         _led2_pwm,
@@ -116,13 +141,14 @@ pub fn init(
     // tim1_set_duty(50);
 
     init_tim3(rcc.clocks.sysclk(), 20.khz().into());
-    tim3_set_duty(2220); // 1800 - 2400 max on 48mhz+20khz
+    // tim3_set_duty(100); // 1800 - 2400 max on 48mhz+20khz
+    tim3_set_white(0);
     log_info!("tim3_max_duty: {}", tim3_max_duty());
 
-    (drv8323)
+    drv8323
 }
 
-pub fn animation_task(mut cx: app::animation_task::Context) {
+pub fn animation_task(_cx: app::animation_task::Context) {
     // cx.shared.drv8323.lock(|drv8323| {
     //     match drv8323 {
     //         Some(drv8323) => {
@@ -171,29 +197,15 @@ impl embedded_hal::blocking::delay::DelayUs<u32> for DummyDelay {
     }
 }
 
-pub fn handle_message(source: NodeId, message: Message, payload: &[u8]) {
-    use crate::ramp_vesc::Event;
-
-    if source == config::PI_NODE_ID && message.subject_id == config::RMP_RAMP_TARGET_SUBJECT_ID {
-        if payload.len() < 4 {
-            return;
-        }
-        let rpm = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
-        count_result!(app::ramp_vesc::spawn(Event::SetRpmTarget(rpm)));
-    } else if source == config::PI_NODE_ID && message.subject_id == config::DUTY_RAMP_TARGET_SUBJECT_ID {
-        if payload.len() < 4 {
-            return;
-        }
-        let duty_p5 = i32::from_le_bytes(clone_into_array(&payload[0..=3]));
-        count_result!(app::ramp_vesc::spawn(Event::SetDutyTarget(duty_p5)));
-    }
-}
-
-pub fn handle_service_request(source: NodeId, service: Service, payload: &[u8]) {
+pub fn handle_message(source: NodeId, message: Message, _payload: &[u8]) {
 
 }
 
+pub fn handle_service_request(_source: NodeId, _service: Service, _payload: &[u8]) {
 
+}
+
+#[allow(dead_code)]
 fn init_tim1(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::time::Hertz) {
     let dp = unsafe { crate::hal::pac::Peripherals::steal() };
     dp.RCC.apb2enr.modify(|_, w| w.tim1en().enabled());
@@ -297,9 +309,10 @@ fn init_tim1(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::tim
     dp.TIM1.bdtr.modify(|_, w| w.moe().enabled());
 }
 
+#[allow(dead_code)]
 fn tim1_set_duty(duty: u16) {
     let dp = unsafe { crate::hal::pac::Peripherals::steal() };
-    let max_duty = dp.TIM1.arr.read().bits();
+    // let max_duty = dp.TIM1.arr.read().bits();
     dp.TIM1.cr1.modify(|_, w| w.udis().disabled());
     dp.TIM1.ccr1.write(|w| unsafe { w.bits(duty as u32) });
     dp.TIM1.ccr2.write(|w| unsafe { w.bits(0) });
@@ -325,15 +338,15 @@ fn init_tim3(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::tim
 
     // Disable output compare 1,2,3
     tim.ccer.modify(|_, w| {
-        w.cc1e()
+        w.cc2e()
             .clear_bit()
             // .cc1ne()
             // .clear_bit()
-            .cc2e()
+            .cc3e()
             .clear_bit()
             // .cc2ne()
             // .clear_bit()
-            .cc3e()
+            .cc4e()
             .clear_bit()
             // .cc3ne()
             // .clear_bit()
@@ -352,39 +365,39 @@ fn init_tim3(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::tim
     // Select output mode
     tim
         .ccmr1_output_mut()
-        .modify(|_, w| w.oc1m().pwm_mode1().oc2m().pwm_mode1());
+        .modify(|_, w| w.oc2m().pwm_mode1());
     tim
         .ccmr2_output_mut()
-        .modify(|_, w| w.oc3m().pwm_mode1());
-    tim.ccr1.write(|w| w.ccr().bits(arr_bits / 2));
-    tim.ccr2.write(|w| w.ccr().bits(arr_bits / 2));
-    tim.ccr3.write(|w| w.ccr().bits(arr_bits / 2));
+        .modify(|_, w| w.oc3m().pwm_mode1().oc4m().pwm_mode1());
+    tim.ccr2.write(|w| w.ccr().bits(0));
+    tim.ccr3.write(|w| w.ccr().bits(0));
+    tim.ccr4.write(|w| w.ccr().bits(0));
     tim.ccer.modify(
         |_, w| {
             w
                 // polarity
-                .cc1p()
-                .set_bit()
                 .cc2p()
-                .set_bit()
+                .clear_bit()
                 .cc3p()
-                .set_bit()
+                .clear_bit()
+                .cc4p()
+                .clear_bit()
                 // enable outputs
-                .cc1e()
-                .set_bit() //.cc1ne().set_bit()
                 .cc2e()
-                .set_bit() //.cc2ne().set_bit()
+                .set_bit() //.cc1ne().set_bit()
                 .cc3e()
+                .set_bit() //.cc2ne().set_bit()
+                .cc4e()
                 .set_bit()
         }, //.cc3ne().set_bit()
     );
     // Enable preload
     tim
         .ccmr1_output_mut()
-        .modify(|_, w| w.oc1pe().enabled().oc2pe().enabled());
+        .modify(|_, w| w.oc2pe().enabled());
     tim
         .ccmr2_output_mut()
-        .modify(|_, w| w.oc3pe().set_bit());
+        .modify(|_, w| w.oc3pe().enabled().oc4pe().enabled());
     // Preload enable on CCR and ARR
     // tim.cr2.modify(|_, w| w.ccpc().set_bit());
     tim.cr1.modify(|_, w| w.arpe().set_bit());
@@ -394,14 +407,28 @@ fn init_tim3(core_freq: stm32f0xx_hal::time::Hertz, pwm_freq: stm32f0xx_hal::tim
     // tim.bdtr.modify(|_, w| w.moe().enabled());
 }
 
-fn tim3_set_duty(duty: u16) {
+const MAX_DUTY: u16 = 700;
+fn tim3_map(percent1000: u16) -> u32 {
+    if percent1000 > 1000 {
+        MAX_DUTY as u32
+    } else {
+        percent1000 as u32 * MAX_DUTY as u32 / 1000
+    }
+}
+
+pub fn tim3_set_duty(percent1000_r: u16, percent1000_g: u16, percent1000_b: u16) {
     let dp = unsafe { crate::hal::pac::Peripherals::steal() };
-    let max_duty = dp.TIM3.arr.read().bits();
+    // let max_duty = dp.TIM3.arr.read().bits();
+
     dp.TIM3.cr1.modify(|_, w| w.udis().disabled());
-    dp.TIM3.ccr1.write(|w| unsafe { w.bits(duty as u32) });
-    dp.TIM3.ccr2.write(|w| unsafe { w.bits(duty as u32) });
-    dp.TIM3.ccr3.write(|w| unsafe { w.bits(duty as u32) });
+    dp.TIM3.ccr2.write(|w| unsafe { w.bits(tim3_map(percent1000_r)) });
+    dp.TIM3.ccr3.write(|w| unsafe { w.bits(tim3_map(percent1000_g)) });
+    dp.TIM3.ccr4.write(|w| unsafe { w.bits(tim3_map(percent1000_b)) });
     dp.TIM3.cr1.modify(|_, w| w.udis().enabled());
+}
+
+pub fn tim3_set_white(percent1000: u16) {
+    tim3_set_duty(percent1000, percent1000, percent1000);
 }
 
 fn tim3_max_duty() -> u32 {

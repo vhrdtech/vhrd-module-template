@@ -23,6 +23,8 @@ pub struct Blinker {
     _pin: PA6<Alternate<AF5>>,
     max_duty: u16,
     current_duty: u16,
+    current_percent1000: u16,
+    percent1000_step: u16,
     duty_direction_up: bool,
     duty_step: u16,
     state: BlinkerState,
@@ -51,6 +53,7 @@ impl Blinker {
         let pin = cortex_m::interrupt::free(|cs| pin.into_alternate_af5(cs));
         let breath_period = Milliseconds::new(config::BLINKER_BREATH_PERIOD.0 * 1000);
         let duty_step = breath_period.0 / config::BLINKER_UPDATE_PERIOD.0; // update count per breath
+        let percent1000_step = (2000 / (breath_period.0 / config::BLINKER_UPDATE_PERIOD.0)) as u16;
         let mut duty_step = max_duty / (duty_step as u16 / 2); // step to count up
         if duty_step == 0 {
             duty_step = 1;
@@ -60,6 +63,8 @@ impl Blinker {
             _pin: pin,
             max_duty,
             current_duty: 0,
+            current_percent1000: 0,
+            percent1000_step,
             duty_direction_up: true,
             duty_step,
             state: BlinkerState::Off,
@@ -102,7 +107,10 @@ use rtic::Mutex;
 use rtic::time::duration::{Milliseconds};
 
 pub fn blink_task(mut cx: app::blink_task::Context, e: BlinkerEvent) {
-    cx.shared.blinker.lock(|b: &mut Blinker| {
+    let mut blinker = cx.shared.blinker;
+    #[cfg(feature = "module-led")]
+    let mut stand_state = cx.shared.stand_state;
+    blinker.lock(|b: &mut Blinker| {
         match e {
             BlinkerEvent::SetState(state) => {
                 b.state = state;
@@ -127,9 +135,15 @@ pub fn blink_task(mut cx: app::blink_task::Context, e: BlinkerEvent) {
                         }
                         if b.duty_direction_up {
                             b.current_duty += b.duty_step;
+                            b.current_percent1000 += b.percent1000_step;
                         } else {
                             b.current_duty -= b.duty_step;
+                            b.current_percent1000 -= b.percent1000_step;
                         }
+                        // log_debug!("{}", b.current_percent1000);
+                        #[cfg(feature = "module-led")]
+                        stand_state.lock(|s| s.set_animation_step(b.current_percent1000));
+
                         app::blink_task::spawn_after(config::BLINKER_UPDATE_PERIOD, BlinkerEvent::Internal).ok();
                     },
                     _ => {}

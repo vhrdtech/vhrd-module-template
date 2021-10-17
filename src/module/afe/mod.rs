@@ -12,8 +12,11 @@ use rtic::Mutex;
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
 use core::cell::RefCell;
 
+const MAX_NOT_JUNK_THRUST: u32 = 80_000;
+const MAX_NOT_JUNK_TORQUE: u32 = 80_000;
+
 pub type Hx711Rate = PA8<Output<PushPull>>;
-    pub type Hx711Instance = Hx711<DummyDelay, PA10<Input<Floating>>, PB6<Output<PushPull>>>;
+pub type Hx711Instance = Hx711<DummyDelay, PA10<Input<Floating>>, PB6<Output<PushPull>>>;
 // }
 // #[cfg(feature = "module-afe-hx711")]
 // use hx711_uses::*;
@@ -67,25 +70,48 @@ pub fn init_hx711(
 static REZERO_FLAG: bare_metal::Mutex<RefCell<bool>> = bare_metal::Mutex::new(RefCell::new(false));
 
 fn zero_afe(hx711: &mut Hx711Instance) -> (i32, i32) {
-    const N: i32 = 16;
-    let mut val: i32 = 0;
+    let mut buf = [0i32; 8];
+    let mut i = 0;
+    const READING_IS_JUNK_DELTA: i32 = 1000;
+
     hx711.set_mode(hx711::Mode::ChAGain128).ok();
     let _skip = block!(hx711.retrieve()).unwrap();
     let _skip = block!(hx711.retrieve()).unwrap();
-    for _ in 0..N {
-        val += block!(hx711.retrieve()).unwrap(); // or unwrap, see features below
+
+    for x in buf.iter_mut() {
+        *x = block!(hx711.retrieve()).unwrap();
     }
-    let torque_0 = val / N;
+    let mean_dirty: i32 = buf.iter().sum::<i32>() / buf.len() as i32;
+    log_debug!("torque_0_dirty: {} buf: {:?}", mean_dirty, buf);
+    let mut mean_clean = 0;
+    let mut clean_count = 0;
+    for x in buf {
+        if (x - mean_dirty) < READING_IS_JUNK_DELTA {
+            mean_clean += x;
+            clean_count += 1;
+        }
+    }
+    let torque_0 = mean_clean / clean_count;
     log_debug!("torque_0: {}", torque_0);
 
-    val = 0;
     hx711.set_mode(hx711::Mode::ChBGain32).ok();
     let _skip = block!(hx711.retrieve()).unwrap();
     let _skip = block!(hx711.retrieve()).unwrap();
-    for _ in 0..N {
-        val += block!(hx711.retrieve()).unwrap(); // or unwrap, see features below
+
+    for x in buf.iter_mut() {
+        *x = block!(hx711.retrieve()).unwrap();
     }
-    let thrust_0 = val / N;
+    let mean_dirty: i32 = buf.iter().sum::<i32>() / buf.len() as i32;
+    log_debug!("thrust_0_dirty: {} buf: {:?}", mean_dirty, buf);
+    let mut mean_clean = 0;
+    let mut clean_count = 0;
+    for x in buf {
+        if (x - mean_dirty) < READING_IS_JUNK_DELTA {
+            mean_clean += x;
+            clean_count += 1;
+        }
+    }
+    let thrust_0 = mean_clean / clean_count;
     log_debug!("thrust_0: {}", thrust_0);
     (torque_0, thrust_0)
 }
@@ -112,13 +138,17 @@ pub fn idle(mut cx: app::idle::Context) -> ! {
         let thrust = nb::block!(hx711.retrieve()).unwrap() - thrust_0;
         log_info!("thrust: {}\ttorque: {}\t{}\t{}", thrust, torque, skip_1, skip_2);
 
-        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(20).unwrap(), false, Priority::Nominal);
-        let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&torque.to_be_bytes()).unwrap(), id, &mut cx.local.state.torque_transfer_id);
-        can_send!(cx, frame);
+        if torque.abs() <= MAX_NOT_JUNK_TORQUE as i32 {
+            let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(20).unwrap(), false, Priority::Nominal);
+            let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&torque.to_be_bytes()).unwrap(), id, &mut cx.local.state.torque_transfer_id);
+            can_send!(cx, frame);
+        }
 
-        let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(21).unwrap(), false, Priority::Nominal);
-        let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&thrust.to_be_bytes()).unwrap(), id, &mut cx.local.state.thrust_transfer_id);
-        can_send!(cx, frame);
+        if thrust.abs() <= MAX_NOT_JUNK_THRUST as i32 {
+            let id = CanId::new_message_kind(config::UAVCAN_NODE_ID, SubjectId::new(21).unwrap(), false, Priority::Nominal);
+            let frame = Slicer::<8>::new_single(OwnedSlice::from_slice(&thrust.to_be_bytes()).unwrap(), id, &mut cx.local.state.thrust_transfer_id);
+            can_send!(cx, frame);
+        }
     }
 }
 

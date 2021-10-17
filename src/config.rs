@@ -2,13 +2,13 @@ use embedded_time::duration::{Seconds, Milliseconds};
 
 /// How often to update LED brightness during transitions (Breath, etc)
 pub const BLINKER_UPDATE_PERIOD: Milliseconds = Milliseconds(20);
-pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(5);
+pub const BLINKER_BREATH_PERIOD: Seconds = Seconds(8);
 
 pub const HEALTH_CHECK_PERIOD: Milliseconds = Milliseconds(1000);
 
 pub const REBOOT_SERVICE_ID: ServiceId = ServiceId::new(4).unwrap();
 #[cfg(feature = "module-led")]
-pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(10).unwrap();
+pub const RMP_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(14).unwrap();
 #[cfg(feature = "module-led")]
 pub const DUTY_RAMP_TARGET_SUBJECT_ID: SubjectId = SubjectId::new(13).unwrap();
 
@@ -75,8 +75,8 @@ pub mod can_stm_config {
 #[cfg(feature = "can-stm")]
 pub use can_stm_config::*;
 use uavcan_llr::types::{NodeId, ServiceId};
-use crate::prelude::{Message, SubjectId};
-use heapless::pool::Node;
+use crate::prelude::{SubjectId};
+// use heapless::pool::Node;
 
 #[cfg(not(feature = "can-stm"))]
 pub type CanStmInstance = ();

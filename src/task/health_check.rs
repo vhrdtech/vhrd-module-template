@@ -1,7 +1,7 @@
 use crate::{app, config, };
 use rtic::Mutex;
 use rtic::rtic_monotonic::Milliseconds;
-use uavcan_llr::types::{TransferId, CanId, NodeId, SubjectId, Priority};
+use uavcan_llr::types::{TransferId, CanId, SubjectId, Priority};
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
