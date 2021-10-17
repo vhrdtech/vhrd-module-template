@@ -6,7 +6,7 @@ arm-none-eabi-objcopy -O binary ./target/thumbv6m-none-eabi/release/vhrd-module-
 cargo +nightly build --release --features="module-afe, module-afe-hx711, f072c8u, can-stm, log-text-rtt, log-level-debug" --color=always
 arm-none-eabi-objcopy -O binary ./target/thumbv6m-none-eabi/release/vhrd-module-template ./target/thumbv6m-none-eabi/release/afe_hx711_f072c8u.bin
 
-cargo +nightly build --release --features="module-led, f072c8u, can-stm, log-text-rtt, log-level-debug" --color=always
+cargo +nightly build --release --features="module-led, f072c8u, can-stm, vesc-ctrl, log-text-rtt, log-level-debug" --color=always
 arm-none-eabi-objcopy -O binary ./target/thumbv6m-none-eabi/release/vhrd-module-template ./target/thumbv6m-none-eabi/release/led_f072c8u.bin
 
 cargo +nightly build --release --features="module-pi, f072c8u, can-stm, log-text-rtt, log-level-debug" --color=always

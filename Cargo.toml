@@ -67,6 +67,8 @@ log-level-info = ["log-level-warn"]
 log-level-warn = ["log-level-error"]
 log-level-error = []
 
+vesc-ctrl = []
+
 [profile.release]
 opt-level = "z"
 codegen-units = 1

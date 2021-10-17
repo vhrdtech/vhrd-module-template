@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Check [led, f072]" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="+nightly check --features=&quot;module-led, f072c8u, can-stm, log-text-rtt, log-level-debug&quot; --color=always" />
+    <option name="command" value="+nightly check --features=&quot;module-led, f072c8u, can-stm, vesc-ctrl, log-text-rtt, log-level-debug&quot; --color=always" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <option name="channel" value="DEFAULT" />
     <option name="requiredFeatures" value="true" />
