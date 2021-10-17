@@ -55,6 +55,9 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                                 } else if uavcan_id.source_node_id == config::PI_NODE_ID && message.subject_id == SubjectId::new(77).unwrap() {
                                     log_debug!("Pwr pressed virt");
                                     cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
+                                } else if uavcan_id.source_node_id == config::PI_NODE_ID && message.subject_id == config::POWER_BUTTON_SUBJECT {
+                                    log_info!("UI Power button pressed");
+                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = false);
                                 }
                                 if false {
 
