@@ -76,8 +76,8 @@ mod app {
 
         #[cfg(feature = "module-led")]
         drv8323: Option<module::led::Drv8323Instance>,
-        #[cfg(feature = "module-led")]
-        stand_state: module::led::StandState,
+ //       #[cfg(feature = "module-led")]
+//        stand_state: module::led::StandState,
 
         #[cfg(feature = "vesc-ctrl")]
         vesc_feedback: Option<crate::ramp_vesc::VescFeedback>,
@@ -86,7 +86,7 @@ mod app {
         #[cfg(feature = "vesc-ctrl")]
         vesc_watchdog_input: Option<i32>,
         #[cfg(feature = "vesc-ctrl")]
-        vesc_watchdog_triggered: Option<()>,
+            vesc_watchdog_triggered: Option<()>,
     }
 
     #[local]
@@ -493,14 +493,14 @@ mod app {
         crate::module::pi::pi_task(_cx, _e);
     }
 
-    #[task(capacity = 1, shared = [stand_state])]
-    fn unpress_estop(mut cx: unpress_estop::Context) {
-        cx.shared.stand_state.lock(|s| s.is_estop_pressed = false);
-        log_debug!("Estop UNpressed");
-    }
+//    #[task(capacity = 1, shared = [stand_state])]
+ //   fn unpress_estop(mut cx: unpress_estop::Context) {
+//        cx.shared.stand_state.lock(|s| s.is_estop_pressed = false);
+  //      log_debug!("Estop UNpressed");
+   // }
 
     extern "Rust" {
-        #[task(shared = [blinker, stand_state], capacity = 2)]
+        #[task(shared = [blinker], capacity = 2)]
         fn blink_task(cx: blink_task::Context, e: crate::task::blink::BlinkerEvent);
 
         #[task(
@@ -511,7 +511,7 @@ mod app {
         )]
         fn health_check_task(mut cx: health_check_task::Context);
 
-        #[task(shared = [can_mcp_rx, can_stm_rx, vesc_feedback, vesc_control_input, stand_state])]
+        #[task(shared = [can_mcp_rx, can_stm_rx, vesc_feedback, vesc_control_input])]
         fn can_rx_router(_cx: can_rx_router::Context);
 
     }

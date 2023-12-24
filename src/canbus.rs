@@ -47,17 +47,17 @@ pub fn can_rx_router(mut cx: app::can_rx_router::Context) {
                                 }
                                 if uavcan_id.source_node_id == config::BUTTON_UAVCAN_NODE_ID && message.subject_id == config::SAFETY_BUTTON_SUBJECT {
                                     log_debug!("Estop pressed");
-                                    cx.shared.stand_state.lock(|s| s.is_estop_pressed = true);
-                                    let _ = app::unpress_estop::spawn_after(Milliseconds::new(500u32));
+                                    //cx.shared.stand_state.lock(|s| s.is_estop_pressed = true);
+                                    //let _ = app::unpress_estop::spawn_after(Milliseconds::new(500u32));
                                 } else if uavcan_id.source_node_id == config::BUTTON_UAVCAN_NODE_ID && message.subject_id == config::POWER_BUTTON_SUBJECT {
                                     log_debug!("Pwr pressed");
-                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
+//                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
                                 } else if uavcan_id.source_node_id == config::PI_NODE_ID && message.subject_id == SubjectId::new(77).unwrap() {
                                     log_debug!("Pwr pressed virt");
-                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
+ //                                   cx.shared.stand_state.lock(|s| s.is_power_enabled = !s.is_power_enabled);
                                 } else if uavcan_id.source_node_id == config::PI_NODE_ID && message.subject_id == config::POWER_BUTTON_SUBJECT {
                                     log_info!("UI Power button pressed");
-                                    cx.shared.stand_state.lock(|s| s.is_power_enabled = false);
+  //                                  cx.shared.stand_state.lock(|s| s.is_power_enabled = false);
                                 }
                                 if false {
 

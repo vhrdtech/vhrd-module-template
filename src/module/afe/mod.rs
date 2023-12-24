@@ -12,8 +12,8 @@ use rtic::Mutex;
 use uavcan_llr::slicer::{Slicer, OwnedSlice};
 use core::cell::RefCell;
 
-const MAX_NOT_JUNK_THRUST: u32 = 80_000;
-const MAX_NOT_JUNK_TORQUE: u32 = 80_000;
+const MAX_NOT_JUNK_THRUST: i32 = i32::MAX;
+const MAX_NOT_JUNK_TORQUE: i32 = i32::MAX;
 
 pub type Hx711Rate = PA8<Output<PushPull>>;
 pub type Hx711Instance = Hx711<DummyDelay, PA10<Input<Floating>>, PB6<Output<PushPull>>>;
